@@ -381,40 +381,36 @@ export function RepoDashboard() {
         </div>
       ) : analysis ? (
         <Tabs defaultValue="overview" className="w-full">
-          {/* Scrollable tab list on small screens */}
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <TabsList className="inline-flex w-auto sm:w-full justify-start h-auto p-1 bg-card border border-border/60 rounded-none gap-0.5 sm:gap-1 font-mono shrink-0">
+          {/* Full-width tab list */}
+          <div className="w-full">
+            <TabsList className="flex w-full justify-stretch h-auto p-1 bg-card border border-border/60 rounded-none gap-0.5 font-mono">
               <TabsTrigger
                 value="overview"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex-1 text-[10px] sm:text-xs py-2 px-1 sm:px-4 rounded-none"
               >
-                <Activity className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
+                <Activity className="w-3 h-3 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">OVERVIEW</span>
-                <span className="sm:hidden">Overview</span>
               </TabsTrigger>
               <TabsTrigger
                 value="architecture"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex-1 text-[10px] sm:text-xs py-2 px-1 sm:px-4 rounded-none"
               >
-                <Map className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
+                <Map className="w-3 h-3 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">ARCHITECTURE</span>
-                <span className="sm:hidden">Arch</span>
               </TabsTrigger>
               <TabsTrigger
                 value="onboarding"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex-1 text-[10px] sm:text-xs py-2 px-1 sm:px-4 rounded-none"
               >
-                <BookOpen className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
+                <BookOpen className="w-3 h-3 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">ONBOARDING</span>
-                <span className="sm:hidden">Onboard</span>
               </TabsTrigger>
               <TabsTrigger
                 value="security"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex-1 text-[10px] sm:text-xs py-2 px-1 sm:px-4 rounded-none"
               >
-                <ShieldAlert className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
+                <ShieldAlert className="w-3 h-3 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">SECURITY</span>
-                <span className="sm:hidden">Security</span>
               </TabsTrigger>
             </TabsList>
           </div>

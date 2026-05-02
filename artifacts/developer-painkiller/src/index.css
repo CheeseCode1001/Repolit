@@ -201,3 +201,8 @@
     --tw-prose-td-borders: hsl(240 3.7% 15.9%);
   }
 }
+
+/* Force sharp corners everywhere */
+*, *::before, *::after {
+  border-radius: 0 !important;
+}
