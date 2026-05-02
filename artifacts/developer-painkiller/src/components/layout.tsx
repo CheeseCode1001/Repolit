@@ -46,7 +46,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               alt="Repograph"
               className="h-8 w-8 object-contain"
             />
-            <span className="font-mono font-bold tracking-tight text-sm sm:text-base text-primary">
+            <span className="font-mono font-bold tracking-tight sm:text-base text-primary text-[20px]">
               repograph
             </span>
           </Link>
@@ -75,9 +75,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </header>
-
       <main className="flex-1 flex flex-col min-w-0">{children}</main>
-
       <footer className="border-t border-border/50 py-5">
         <div className="container max-w-screen-xl flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-center text-xs text-muted-foreground font-mono">
