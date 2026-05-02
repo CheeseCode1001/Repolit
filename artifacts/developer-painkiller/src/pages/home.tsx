@@ -92,7 +92,7 @@ export function Home() {
 
       {/* Stats */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto w-full">
-        <Card className="bg-card/60 backdrop-blur border-border/60">
+        <Card className="bg-card/60 backdrop-blur border-border/60 rounded-none">
           <CardHeader className="pb-1 pt-4 px-4">
             <CardTitle className="text-xs font-mono text-muted-foreground flex items-center gap-1.5">
               <GitBranch className="h-3.5 w-3.5" /> REPOS ANALYZED
