@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
@@ -10,6 +10,7 @@ import { Layout } from "@/components/layout";
 import { Home } from "@/pages/home";
 import { RepoDashboard } from "@/pages/repo";
 import NotFound from "@/pages/not-found";
+import { SplashScreen } from "@/components/splash-screen";
 
 const queryClient = new QueryClient();
 
@@ -173,10 +174,15 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   return (
-    <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
-    </WouterRouter>
+    <>
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      <WouterRouter base={basePath}>
+        <ClerkProviderWithRoutes />
+      </WouterRouter>
+    </>
   );
 }
 
