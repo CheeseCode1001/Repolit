@@ -73,7 +73,7 @@ export function Home() {
             <Input
               type="url"
               placeholder="https://github.com/owner/repo"
-              className="pl-10 h-11 sm:h-12 font-mono text-sm bg-card border-border/60 focus-visible:ring-primary w-full"
+              className="pl-10 h-11 sm:h-12 font-mono text-sm bg-card border-border/60 focus-visible:ring-primary w-full rounded-none"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required
