@@ -191,7 +191,7 @@ export function Home() {
             {repos?.map((repo) => (
               <Card
                 key={repo.id}
-                className="group cursor-pointer hover:border-primary/40 transition-all duration-200 bg-card/50 hover:bg-card/80 border-border/60"
+                className="group cursor-pointer hover:border-primary/40 transition-all duration-200 bg-card/50 hover:bg-card/80 border-border/60 rounded-none"
                 onClick={() => setLocation(`/repo/${repo.id}`)}
               >
                 <CardHeader className="p-4 pb-2">
