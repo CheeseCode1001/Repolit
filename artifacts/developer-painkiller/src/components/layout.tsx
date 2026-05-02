@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Show, useUser, useClerk } from "@clerk/react";
-import logoIcon from "@assets/logo2_nobg.png";
+const logoIcon = "/logo-icon.png";
 
 function UserNav() {
   const { user } = useUser();
