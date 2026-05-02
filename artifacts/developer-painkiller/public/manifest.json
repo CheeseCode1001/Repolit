@@ -1,6 +1,6 @@
 {
-  "name": "Developer Painkiller",
-  "short_name": "DevPainkiller",
+  "name": "Repograph",
+  "short_name": "Repograph",
   "description": "AI-powered GitHub repository analyzer — architecture diagrams, onboarding docs, security scans.",
   "start_url": "/",
   "display": "standalone",
