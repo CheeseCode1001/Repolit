@@ -383,10 +383,10 @@ export function RepoDashboard() {
         <Tabs defaultValue="overview" className="w-full">
           {/* Scrollable tab list on small screens */}
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <TabsList className="inline-flex w-auto sm:w-full justify-start h-auto p-1 bg-card border border-border/60 rounded-md gap-0.5 sm:gap-1 font-mono shrink-0">
+            <TabsList className="inline-flex w-auto sm:w-full justify-start h-auto p-1 bg-card border border-border/60 rounded-none gap-0.5 sm:gap-1 font-mono shrink-0">
               <TabsTrigger
                 value="overview"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-sm whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
               >
                 <Activity className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
                 <span className="hidden sm:inline">OVERVIEW</span>
@@ -394,7 +394,7 @@ export function RepoDashboard() {
               </TabsTrigger>
               <TabsTrigger
                 value="architecture"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-sm whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
               >
                 <Map className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
                 <span className="hidden sm:inline">ARCHITECTURE</span>
@@ -402,7 +402,7 @@ export function RepoDashboard() {
               </TabsTrigger>
               <TabsTrigger
                 value="onboarding"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-sm whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
               >
                 <BookOpen className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
                 <span className="hidden sm:inline">ONBOARDING</span>
@@ -410,7 +410,7 @@ export function RepoDashboard() {
               </TabsTrigger>
               <TabsTrigger
                 value="security"
-                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-sm whitespace-nowrap"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary text-[11px] sm:text-xs py-2 px-3 sm:px-4 rounded-none whitespace-nowrap"
               >
                 <ShieldAlert className="w-3 h-3 sm:mr-1.5 hidden sm:inline-block" />
                 <span className="hidden sm:inline">SECURITY</span>
@@ -564,7 +564,7 @@ function StatusBadge({
     return (
       <Badge
         variant="outline"
-        className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-mono text-[10px] uppercase animate-pulse shrink-0"
+        className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-mono text-[10px] uppercase animate-pulse shrink-0 rounded-none"
       >
         ANALYZING
       </Badge>
@@ -575,7 +575,7 @@ function StatusBadge({
       return (
         <Badge
           variant="outline"
-          className="bg-primary/10 text-primary border-primary/30 font-mono text-[10px] uppercase shrink-0"
+          className="bg-primary/10 text-primary border-primary/30 font-mono text-[10px] uppercase shrink-0 rounded-none"
         >
           ANALYZED
         </Badge>
@@ -584,7 +584,7 @@ function StatusBadge({
       return (
         <Badge
           variant="outline"
-          className="bg-destructive/10 text-destructive border-destructive/20 font-mono text-[10px] uppercase shrink-0"
+          className="bg-destructive/10 text-destructive border-destructive/20 font-mono text-[10px] uppercase shrink-0 rounded-none"
         >
           ERROR
         </Badge>
@@ -593,7 +593,7 @@ function StatusBadge({
       return (
         <Badge
           variant="outline"
-          className="bg-muted text-muted-foreground font-mono text-[10px] uppercase shrink-0"
+          className="bg-muted text-muted-foreground font-mono text-[10px] uppercase shrink-0 rounded-none"
         >
           PENDING
         </Badge>
