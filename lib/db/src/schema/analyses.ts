@@ -10,6 +10,7 @@ export const analysesTable = pgTable("analyses", {
   architecture: text("architecture"),
   onboarding: text("onboarding"),
   security: text("security"),
+  startHere: text("start_here"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

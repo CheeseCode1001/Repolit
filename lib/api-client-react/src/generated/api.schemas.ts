@@ -35,7 +35,17 @@ export interface Analysis {
   architecture?: string | null;
   onboarding?: string | null;
   security?: string | null;
+  /** JSON array of start-here file recommendations */
+  startHere?: string | null;
   createdAt: string;
+}
+
+export interface ChatBody {
+  question: string;
+}
+
+export interface ChatResponse {
+  answer: string;
 }
 
 export type StatsLanguageCounts = { [key: string]: number };

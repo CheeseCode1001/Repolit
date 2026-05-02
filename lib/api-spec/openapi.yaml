@@ -147,6 +147,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /repos/{id}/chat:
+    post:
+      operationId: chatWithRepo
+      tags: [analyses]
+      summary: Ask a contextual question about a repository
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatBody"
+      responses:
+        "200":
+          description: AI answer to the question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /stats:
     get:
       operationId: getStats
@@ -236,6 +267,10 @@ components:
         security:
           type: string
           nullable: true
+        startHere:
+          type: string
+          nullable: true
+          description: JSON array of start-here file recommendations
         createdAt:
           type: string
           format: date-time
@@ -243,6 +278,22 @@ components:
         - id
         - repoId
         - createdAt
+
+    ChatBody:
+      type: object
+      properties:
+        question:
+          type: string
+      required:
+        - question
+
+    ChatResponse:
+      type: object
+      properties:
+        answer:
+          type: string
+      required:
+        - answer
 
     Stats:
       type: object

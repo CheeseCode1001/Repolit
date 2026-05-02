@@ -87,7 +87,26 @@ export const GetRepoAnalysisResponse = zod.object({
   architecture: zod.string().nullish().describe("Mermaid diagram syntax"),
   onboarding: zod.string().nullish(),
   security: zod.string().nullish(),
+  startHere: zod
+    .string()
+    .nullish()
+    .describe("JSON array of start-here file recommendations"),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Ask a contextual question about a repository
+ */
+export const ChatWithRepoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ChatWithRepoBody = zod.object({
+  question: zod.string(),
+});
+
+export const ChatWithRepoResponse = zod.object({
+  answer: zod.string(),
 });
 
 /**

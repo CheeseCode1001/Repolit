@@ -9,6 +9,7 @@ const router = Router();
 
 const CreateRepoBody = z.object({ url: z.string().url() });
 const IdParam = z.object({ id: z.coerce.number() });
+const ChatBody = z.object({ question: z.string().min(1).max(2000) });
 
 function parseGitHubUrl(url: string): { owner: string; name: string } | null {
   try {
@@ -54,7 +55,7 @@ async function fetchRepoTree(owner: string, name: string): Promise<string> {
     const files = (data.tree ?? [])
       .filter((f) => f.type === "blob" && f.path)
       .map((f) => f.path!)
-      .slice(0, 200);
+      .slice(0, 300);
     return files.join("\n");
   } catch {
     return "";
@@ -195,8 +196,8 @@ router.post("/repos/:id/analyze", async (req, res) => {
 
     send({ step: "Reading key files..." });
     const keyFiles = tree.split("\n").filter(f =>
-      /README|package\.json|requirements|setup\.py|Cargo\.toml|go\.mod|Makefile|docker|\.env\.example/i.test(f)
-    ).slice(0, 5);
+      /README|package\.json|requirements|setup\.py|Cargo\.toml|go\.mod|Makefile|docker|\.env\.example|tsconfig|main\.(ts|js|py|go|rs)|app\.(ts|js|tsx)|index\.(ts|js)/i.test(f)
+    ).slice(0, 8);
 
     const fileContents: string[] = [];
     for (const file of keyFiles) {
@@ -209,7 +210,7 @@ Description: ${repo.description ?? "N/A"}
 Language: ${repo.language ?? "Unknown"}
 Stars: ${repo.stars ?? 0}
 
-File tree (first 200 files):
+File tree (up to 300 files):
 ${tree}
 
 Key file contents:
@@ -219,15 +220,41 @@ ${fileContents.join("\n\n")}`;
 
     const summaryPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: `You are a senior software architect. Analyze this GitHub repository and provide a concise high-level summary (2-3 paragraphs) covering: purpose, tech stack, key components, and notable patterns.\n\n${context}` }] }],
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `You are a senior software architect explaining a codebase to a mid-level developer.
+
+Analyze this GitHub repository and provide a clear, opinionated explanation covering:
+1. What this project does and why it exists
+2. The tech stack and WHY those technologies were chosen (tradeoffs and alternatives considered)
+3. Key components and their responsibilities
+4. How data flows through the system end-to-end
+5. Notable design patterns or architectural decisions — and why they were made that way
+6. Any suggestions or improvements you'd recommend as a senior engineer
+
+Be specific to this codebase. Avoid generic boilerplate. Write like you're onboarding a teammate, not documenting for a README.
+
+${context}`
+        }]
+      }],
       config: { maxOutputTokens: 8192 },
     });
 
-    send({ step: "Generating architecture diagrams..." });
+    send({ step: "Generating architecture diagram..." });
 
     const architecturePromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: `You are a software architect. Generate a Mermaid.js diagram showing the architecture or data flow of this repository. Output ONLY valid Mermaid syntax (start with graph TD or flowchart TD or sequenceDiagram etc). No markdown fences, no explanation.\n\n${context}` }] }],
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `You are a software architect. Generate a Mermaid.js diagram showing the architecture or data flow of this repository.
+
+Output ONLY valid Mermaid syntax (start with graph TD or flowchart TD or sequenceDiagram etc). No markdown fences, no explanation. Make it accurate and specific to this codebase — show real module names, not generic placeholders.
+
+${context}`
+        }]
+      }],
       config: { maxOutputTokens: 8192 },
     });
 
@@ -235,7 +262,25 @@ ${fileContents.join("\n\n")}`;
 
     const onboardingPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: `You are a developer advocate. Write a clear onboarding guide for new contributors to this repository. Include: prerequisites, setup steps, folder structure explanation, how to run/test, and first contribution tips. Use markdown with headers and bullet points.\n\n${context}` }] }],
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `You are a senior developer advocate writing an onboarding guide for a new contributor to this repository.
+
+Write a comprehensive but practical guide covering:
+1. Prerequisites and what you need to know before starting
+2. Setup steps with exact commands
+3. Folder structure explained — what goes where and why
+4. How to run, test, and verify your changes
+5. How the main pieces connect (give a mental model)
+6. Common gotchas or things that trip up new contributors
+7. Your first contribution: where to start and what to avoid
+
+Use markdown with clear headers, code blocks, and bullet points. Be specific to this codebase — reference real file paths and real commands where possible.
+
+${context}`
+        }]
+      }],
       config: { maxOutputTokens: 8192 },
     });
 
@@ -243,22 +288,77 @@ ${fileContents.join("\n\n")}`;
 
     const securityPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: `You are a security engineer. Analyze this repository for potential security issues. Look for: hardcoded secrets, insecure patterns, missing auth checks, dependency concerns, and common vulnerabilities. Return a JSON array of findings, each with {severity: "critical"|"high"|"medium"|"low"|"info", title: string, description: string, recommendation: string}. Return ONLY the JSON array, no markdown.\n\n${context}` }] }],
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `You are a security engineer performing a code review. Analyze this repository for potential security issues.
+
+Look for:
+- Hardcoded secrets, tokens, or credentials
+- Insecure authentication or authorization patterns
+- Missing input validation or sanitization
+- Dependency concerns (outdated, vulnerable, or suspicious packages)
+- Common vulnerabilities (SSRF, injection, XSS, CSRF, open redirects)
+- Insecure data handling or storage
+- Missing rate limiting or abuse protection
+
+Return a JSON array of findings. Each finding must have:
+{
+  "severity": "critical" | "high" | "medium" | "low" | "info",
+  "title": string (short, specific),
+  "description": string (what the issue is and where),
+  "recommendation": string (specific actionable fix)
+}
+
+Return ONLY the JSON array, no markdown fences or extra text.
+
+${context}`
+        }]
+      }],
       config: { maxOutputTokens: 8192, responseMimeType: "application/json" },
     });
 
-    const [summaryResult, archResult, onboardingResult, securityResult] = await Promise.all([
-      summaryPromise, architecturePromise, onboardingPromise, securityPromise
+    send({ step: "Building Start Here guide..." });
+
+    const startHerePromise = ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `You are a senior engineer mentoring a new developer who just joined the team.
+
+A new developer needs to understand this codebase quickly. Identify the 5-7 most important files or locations they should read FIRST — the ones that will give the greatest understanding with the least time investment.
+
+Return a JSON array where each item has:
+{
+  "file": string (relative file path, e.g. "src/server.ts"),
+  "title": string (short descriptive name, e.g. "Main Application Entry"),
+  "why": string (2-3 sentences: why THIS file matters, what reading it teaches you, what mental model it unlocks),
+  "insight": string (1 key thing to notice or understand when reading this file — a senior engineer's observation)
+}
+
+Order by priority (most important first). Be specific to this actual codebase — use real file paths from the tree. Do not include generic files like .gitignore or LICENSE unless they are genuinely important.
+
+Return ONLY the JSON array, no markdown fences or extra text.
+
+${context}`
+        }]
+      }],
+      config: { maxOutputTokens: 4096, responseMimeType: "application/json" },
+    });
+
+    const [summaryResult, archResult, onboardingResult, securityResult, startHereResult] = await Promise.all([
+      summaryPromise, architecturePromise, onboardingPromise, securityPromise, startHerePromise
     ]);
 
     const summary = summaryResult.text ?? "";
     const architecture = archResult.text ?? "";
     const onboarding = onboardingResult.text ?? "";
     const security = securityResult.text ?? "";
+    const startHere = startHereResult.text ?? "";
 
     send({ step: "Saving results..." });
 
-    // Delete old analysis if exists
     await db.delete(analysesTable).where(eq(analysesTable.repoId, repo.id));
 
     const [analysis] = await db.insert(analysesTable).values({
@@ -267,6 +367,7 @@ ${fileContents.join("\n\n")}`;
       architecture,
       onboarding,
       security,
+      startHere,
     }).returning();
 
     await db.update(reposTable).set({ status: "done", updatedAt: new Date() }).where(eq(reposTable.id, repo.id));
@@ -300,6 +401,70 @@ router.get("/repos/:id/analysis", async (req, res) => {
     res.json(analysis);
   } catch (err) {
     req.log.error({ err }, "Failed to get analysis");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/repos/:id/chat — ask a contextual question about the repo
+router.post("/repos/:id/chat", async (req, res) => {
+  const parsedId = IdParam.safeParse(req.params);
+  if (!parsedId.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const parsedBody = ChatBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+
+  const { question } = parsedBody.data;
+
+  try {
+    const [repo] = await db.select().from(reposTable).where(eq(reposTable.id, parsedId.data.id));
+    if (!repo) {
+      res.status(404).json({ error: "Repo not found" });
+      return;
+    }
+
+    const [analysis] = await db.select().from(analysesTable)
+      .where(eq(analysesTable.repoId, repo.id))
+      .orderBy(desc(analysesTable.createdAt))
+      .limit(1);
+
+    const context = `Repository: ${repo.owner}/${repo.name}
+Description: ${repo.description ?? "N/A"}
+Language: ${repo.language ?? "Unknown"}
+
+${analysis?.summary ? `CODEBASE OVERVIEW:\n${analysis.summary}\n` : ""}
+${analysis?.onboarding ? `ONBOARDING GUIDE:\n${analysis.onboarding}\n` : ""}`;
+
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `You are a senior engineer who deeply knows the ${repo.owner}/${repo.name} codebase. A developer is asking you a question about it.
+
+Answer as if you are that senior engineer — be specific, reference real file paths and module names where relevant, explain WHY things work the way they do, and include any tradeoffs or gotchas worth knowing.
+
+If the question asks "where is X", point to specific files. If it asks "how do I do Y", give concrete steps. If it asks "why is Z designed this way", explain the reasoning and tradeoffs.
+
+CODEBASE CONTEXT:
+${context}
+
+DEVELOPER QUESTION: ${question}
+
+Answer concisely but completely. Use markdown formatting with code blocks and bullet points where helpful.`
+        }]
+      }],
+      config: { maxOutputTokens: 4096 },
+    });
+
+    res.json({ answer: result.text ?? "Unable to generate an answer." });
+  } catch (err) {
+    req.log.error({ err }, "Chat failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });

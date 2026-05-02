@@ -19,6 +19,8 @@ import type {
 import type {
   Analysis,
   ApiError,
+  ChatBody,
+  ChatResponse,
   CreateRepoBody,
   HealthStatus,
   Repo,
@@ -592,6 +594,93 @@ export function useGetRepoAnalysis<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Ask a contextual question about a repository
+ */
+export const getChatWithRepoUrl = (id: number) => {
+  return `/api/repos/${id}/chat`;
+};
+
+export const chatWithRepo = async (
+  id: number,
+  chatBody: ChatBody,
+  options?: RequestInit,
+): Promise<ChatResponse> => {
+  return customFetch<ChatResponse>(getChatWithRepoUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatBody),
+  });
+};
+
+export const getChatWithRepoMutationOptions = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof chatWithRepo>>,
+    TError,
+    { id: number; data: BodyType<ChatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof chatWithRepo>>,
+  TError,
+  { id: number; data: BodyType<ChatBody> },
+  TContext
+> => {
+  const mutationKey = ["chatWithRepo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof chatWithRepo>>,
+    { id: number; data: BodyType<ChatBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return chatWithRepo(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChatWithRepoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof chatWithRepo>>
+>;
+export type ChatWithRepoMutationBody = BodyType<ChatBody>;
+export type ChatWithRepoMutationError = ErrorType<ApiError>;
+
+/**
+ * @summary Ask a contextual question about a repository
+ */
+export const useChatWithRepo = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof chatWithRepo>>,
+    TError,
+    { id: number; data: BodyType<ChatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof chatWithRepo>>,
+  TError,
+  { id: number; data: BodyType<ChatBody> },
+  TContext
+> => {
+  return useMutation(getChatWithRepoMutationOptions(options));
+};
 
 /**
  * @summary Get aggregate stats (total repos, analyses, languages breakdown)
