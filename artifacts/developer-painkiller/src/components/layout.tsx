@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Show, useUser, useClerk } from "@clerk/react";
+import logoIcon from "@assets/logo_nobg.png";
 
 function UserNav() {
   const { user } = useUser();
@@ -39,10 +39,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="container flex h-14 max-w-screen-xl items-center justify-between gap-4">
           <Link
             href="/"
-            className="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity shrink-0"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
           >
-            <Terminal className="h-5 w-5" />
-            <span className="font-mono font-bold tracking-tight text-sm sm:text-base">
+            <img
+              src={logoIcon}
+              alt="Repograph"
+              className="h-8 w-8 object-contain"
+            />
+            <span className="font-mono font-bold tracking-tight text-sm sm:text-base text-primary">
               repograph
             </span>
           </Link>
