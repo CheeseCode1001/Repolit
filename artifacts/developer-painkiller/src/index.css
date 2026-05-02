@@ -91,7 +91,7 @@
   --input: 240 3.7% 15.9%;
   --ring: 142.1 70.6% 45.3%;
 
-  --radius: 0.375rem;
+  --radius: 0rem;
 
   --chart-1: 142.1 70.6% 45.3%;
   --chart-2: 173 58% 39%;
@@ -108,7 +108,7 @@
   --sidebar-border: 240 3.7% 15.9%;
   --sidebar-ring: 142.1 70.6% 45.3%;
 
-  --app-font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --app-font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   --app-font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
