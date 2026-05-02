@@ -438,12 +438,7 @@ export function RepoDashboard() {
             >
               <div className="h-72 sm:h-[500px] md:h-[600px]">
                 {analysis.architecture ? (
-                  <MermaidDiagram
-                    chart={analysis.architecture.replace(
-                      /```mermaid\n|\n```/g,
-                      ""
-                    )}
-                  />
+                  <MermaidDiagram chart={analysis.architecture} />
                 ) : (
                   <Card className="h-full flex items-center justify-center border-dashed border-border/50">
                     <p className="text-muted-foreground font-mono text-sm">
