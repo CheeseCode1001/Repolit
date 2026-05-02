@@ -82,7 +82,7 @@ export function Home() {
           <Button
             type="submit"
             size="lg"
-            className="h-11 sm:h-12 font-mono font-bold tracking-wider shrink-0"
+            className="h-11 sm:h-12 font-mono font-bold tracking-wider shrink-0 rounded-none"
             disabled={createRepo.isPending}
           >
             {createRepo.isPending ? "SCANNING..." : "SCAN REPO"}
