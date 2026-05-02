@@ -6,4 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./analysis";
+export * from "./apiError";
+export * from "./createRepoBody";
 export * from "./healthStatus";
+export * from "./repo";
+export * from "./stats";
+export * from "./statsLanguageCounts";

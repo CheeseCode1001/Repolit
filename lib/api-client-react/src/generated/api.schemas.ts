@@ -8,3 +8,45 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface Repo {
+  id: number;
+  url: string;
+  name: string;
+  owner: string;
+  description?: string | null;
+  language?: string | null;
+  stars?: number | null;
+  /** pending | analyzing | done | error */
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRepoBody {
+  url: string;
+}
+
+export interface Analysis {
+  id: number;
+  repoId: number;
+  summary?: string | null;
+  /** Mermaid diagram syntax */
+  architecture?: string | null;
+  onboarding?: string | null;
+  security?: string | null;
+  createdAt: string;
+}
+
+export type StatsLanguageCounts = { [key: string]: number };
+
+export interface Stats {
+  totalRepos: number;
+  totalAnalyses: number;
+  languageCounts: StatsLanguageCounts;
+  recentRepos: Repo[];
+}
+
+export interface ApiError {
+  error: string;
+}

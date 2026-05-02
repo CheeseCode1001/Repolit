@@ -5,18 +5,28 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  Analysis,
+  ApiError,
+  CreateRepoBody,
+  HealthStatus,
+  Repo,
+  Stats,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +102,554 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List recently analyzed repositories
+ */
+export const getListReposUrl = () => {
+  return `/api/repos`;
+};
+
+export const listRepos = async (options?: RequestInit): Promise<Repo[]> => {
+  return customFetch<Repo[]>(getListReposUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListReposQueryKey = () => {
+  return [`/api/repos`] as const;
+};
+
+export const getListReposQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRepos>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listRepos>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListReposQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRepos>>> = ({
+    signal,
+  }) => listRepos({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRepos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReposQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRepos>>
+>;
+export type ListReposQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List recently analyzed repositories
+ */
+
+export function useListRepos<
+  TData = Awaited<ReturnType<typeof listRepos>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listRepos>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReposQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Submit a repository URL for analysis
+ */
+export const getCreateRepoUrl = () => {
+  return `/api/repos`;
+};
+
+export const createRepo = async (
+  createRepoBody: CreateRepoBody,
+  options?: RequestInit,
+): Promise<Repo> => {
+  return customFetch<Repo>(getCreateRepoUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createRepoBody),
+  });
+};
+
+export const getCreateRepoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRepo>>,
+    TError,
+    { data: BodyType<CreateRepoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createRepo>>,
+  TError,
+  { data: BodyType<CreateRepoBody> },
+  TContext
+> => {
+  const mutationKey = ["createRepo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createRepo>>,
+    { data: BodyType<CreateRepoBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createRepo(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateRepoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createRepo>>
+>;
+export type CreateRepoMutationBody = BodyType<CreateRepoBody>;
+export type CreateRepoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit a repository URL for analysis
+ */
+export const useCreateRepo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRepo>>,
+    TError,
+    { data: BodyType<CreateRepoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createRepo>>,
+  TError,
+  { data: BodyType<CreateRepoBody> },
+  TContext
+> => {
+  return useMutation(getCreateRepoMutationOptions(options));
+};
+
+/**
+ * @summary Get a repository by ID
+ */
+export const getGetRepoUrl = (id: number) => {
+  return `/api/repos/${id}`;
+};
+
+export const getRepo = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Repo> => {
+  return customFetch<Repo>(getGetRepoUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRepoQueryKey = (id: number) => {
+  return [`/api/repos/${id}`] as const;
+};
+
+export const getGetRepoQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRepo>>,
+  TError = ErrorType<ApiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getRepo>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRepoQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRepo>>> = ({
+    signal,
+  }) => getRepo(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getRepo>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetRepoQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRepo>>
+>;
+export type GetRepoQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary Get a repository by ID
+ */
+
+export function useGetRepo<
+  TData = Awaited<ReturnType<typeof getRepo>>,
+  TError = ErrorType<ApiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getRepo>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRepoQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a repository record
+ */
+export const getDeleteRepoUrl = (id: number) => {
+  return `/api/repos/${id}`;
+};
+
+export const deleteRepo = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteRepoUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteRepoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRepo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteRepo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteRepo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteRepo>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteRepo(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteRepoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteRepo>>
+>;
+
+export type DeleteRepoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a repository record
+ */
+export const useDeleteRepo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRepo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteRepo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteRepoMutationOptions(options));
+};
+
+/**
+ * @summary Trigger AI analysis for a repository (SSE stream)
+ */
+export const getAnalyzeRepoUrl = (id: number) => {
+  return `/api/repos/${id}/analyze`;
+};
+
+export const analyzeRepo = async (
+  id: number,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getAnalyzeRepoUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAnalyzeRepoMutationOptions = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeRepo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzeRepo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["analyzeRepo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzeRepo>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return analyzeRepo(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzeRepoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzeRepo>>
+>;
+
+export type AnalyzeRepoMutationError = ErrorType<ApiError>;
+
+/**
+ * @summary Trigger AI analysis for a repository (SSE stream)
+ */
+export const useAnalyzeRepo = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeRepo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyzeRepo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getAnalyzeRepoMutationOptions(options));
+};
+
+/**
+ * @summary Get the latest analysis results for a repository
+ */
+export const getGetRepoAnalysisUrl = (id: number) => {
+  return `/api/repos/${id}/analysis`;
+};
+
+export const getRepoAnalysis = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Analysis> => {
+  return customFetch<Analysis>(getGetRepoAnalysisUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRepoAnalysisQueryKey = (id: number) => {
+  return [`/api/repos/${id}/analysis`] as const;
+};
+
+export const getGetRepoAnalysisQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRepoAnalysis>>,
+  TError = ErrorType<ApiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRepoAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRepoAnalysisQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRepoAnalysis>>> = ({
+    signal,
+  }) => getRepoAnalysis(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRepoAnalysis>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRepoAnalysisQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRepoAnalysis>>
+>;
+export type GetRepoAnalysisQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary Get the latest analysis results for a repository
+ */
+
+export function useGetRepoAnalysis<
+  TData = Awaited<ReturnType<typeof getRepoAnalysis>>,
+  TError = ErrorType<ApiError>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRepoAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRepoAnalysisQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get aggregate stats (total repos, analyses, languages breakdown)
+ */
+export const getGetStatsUrl = () => {
+  return `/api/stats`;
+};
+
+export const getStats = async (options?: RequestInit): Promise<Stats> => {
+  return customFetch<Stats>(getGetStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStatsQueryKey = () => {
+  return [`/api/stats`] as const;
+};
+
+export const getGetStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStats>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStats>>> = ({
+    signal,
+  }) => getStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStats>>
+>;
+export type GetStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get aggregate stats (total repos, analyses, languages breakdown)
+ */
+
+export function useGetStats<
+  TData = Awaited<ReturnType<typeof getStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getStats>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

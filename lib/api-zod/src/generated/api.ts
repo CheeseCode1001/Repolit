@@ -14,3 +14,101 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List recently analyzed repositories
+ */
+export const ListReposResponseItem = zod.object({
+  id: zod.number(),
+  url: zod.string(),
+  name: zod.string(),
+  owner: zod.string(),
+  description: zod.string().nullish(),
+  language: zod.string().nullish(),
+  stars: zod.number().nullish(),
+  status: zod.string().describe("pending | analyzing | done | error"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListReposResponse = zod.array(ListReposResponseItem);
+
+/**
+ * @summary Submit a repository URL for analysis
+ */
+export const CreateRepoBody = zod.object({
+  url: zod.string(),
+});
+
+/**
+ * @summary Get a repository by ID
+ */
+export const GetRepoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetRepoResponse = zod.object({
+  id: zod.number(),
+  url: zod.string(),
+  name: zod.string(),
+  owner: zod.string(),
+  description: zod.string().nullish(),
+  language: zod.string().nullish(),
+  stars: zod.number().nullish(),
+  status: zod.string().describe("pending | analyzing | done | error"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a repository record
+ */
+export const DeleteRepoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Trigger AI analysis for a repository (SSE stream)
+ */
+export const AnalyzeRepoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Get the latest analysis results for a repository
+ */
+export const GetRepoAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetRepoAnalysisResponse = zod.object({
+  id: zod.number(),
+  repoId: zod.number(),
+  summary: zod.string().nullish(),
+  architecture: zod.string().nullish().describe("Mermaid diagram syntax"),
+  onboarding: zod.string().nullish(),
+  security: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get aggregate stats (total repos, analyses, languages breakdown)
+ */
+export const GetStatsResponse = zod.object({
+  totalRepos: zod.number(),
+  totalAnalyses: zod.number(),
+  languageCounts: zod.record(zod.string(), zod.number()),
+  recentRepos: zod.array(
+    zod.object({
+      id: zod.number(),
+      url: zod.string(),
+      name: zod.string(),
+      owner: zod.string(),
+      description: zod.string().nullish(),
+      language: zod.string().nullish(),
+      stars: zod.number().nullish(),
+      status: zod.string().describe("pending | analyzing | done | error"),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
