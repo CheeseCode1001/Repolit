@@ -48,7 +48,7 @@ export function Home() {
     <div className="container max-w-screen-xl py-8 sm:py-12 flex flex-col gap-10 sm:gap-14">
       {/* Hero */}
       <section className="flex flex-col items-center text-center gap-5 max-w-3xl mx-auto pt-4 sm:pt-8 w-full">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs sm:text-sm font-mono border border-border/60">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs sm:text-sm font-mono border border-border/60 rounded-tl-[0px] rounded-tr-[0px] rounded-br-[0px] rounded-bl-[0px]">
           <Terminal className="w-3.5 h-3.5 text-primary" />
           <span>v1.0.0-beta — System Online</span>
         </div>
@@ -89,7 +89,6 @@ export function Home() {
           </Button>
         </form>
       </section>
-
       {/* Stats */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto w-full">
         <Card className="bg-card/60 backdrop-blur border-border/60 rounded-none">
@@ -160,7 +159,6 @@ export function Home() {
           </CardContent>
         </Card>
       </section>
-
       {/* Recent Repos */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2 border-b border-border/50 pb-2">
