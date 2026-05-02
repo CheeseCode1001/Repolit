@@ -200,10 +200,17 @@ export function RepoDashboard() {
   const isWorking =
     repo.status === "pending" || repo.status === "analyzing" || isAnalyzing;
 
-  let securityFindings: string[] = [];
+  type SecurityFinding = {
+    severity: "critical" | "high" | "medium" | "low" | "info";
+    title: string;
+    description: string;
+    recommendation: string;
+  };
+  let securityFindings: SecurityFinding[] = [];
   if (analysis?.security) {
     try {
-      securityFindings = JSON.parse(analysis.security);
+      const parsed = JSON.parse(analysis.security);
+      securityFindings = Array.isArray(parsed) ? parsed : [];
     } catch (e) {}
   }
 
@@ -471,12 +478,10 @@ export function RepoDashboard() {
               <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
                 {securityFindings.length > 0 ? (
                   securityFindings.map((finding, i) => {
-                    const isHigh =
-                      finding.toLowerCase().includes("high") ||
-                      finding.toLowerCase().includes("critical");
-                    const isMedium = finding
-                      .toLowerCase()
-                      .includes("medium");
+                    const sev = (finding.severity ?? "").toLowerCase();
+                    const isHigh = sev === "critical" || sev === "high";
+                    const isMedium = sev === "medium";
+                    const severityLabel = (finding.severity ?? "info").toUpperCase();
                     return (
                       <Card
                         key={i}
@@ -500,30 +505,31 @@ export function RepoDashboard() {
                                     : "text-muted-foreground"
                                 }`}
                               />
-                              Finding #{i + 1}
+                              {finding.title || `Finding #${i + 1}`}
                             </CardTitle>
-                            {isHigh && (
-                              <Badge
-                                variant="destructive"
-                                className="font-mono text-[10px] shrink-0"
-                              >
-                                HIGH
-                              </Badge>
-                            )}
-                            {isMedium && (
-                              <Badge
-                                variant="outline"
-                                className="text-yellow-500 border-yellow-500/30 font-mono text-[10px] shrink-0"
-                              >
-                                MEDIUM
-                              </Badge>
-                            )}
+                            <Badge
+                              variant={isHigh ? "destructive" : "outline"}
+                              className={`font-mono text-[10px] shrink-0 ${
+                                isMedium
+                                  ? "text-yellow-500 border-yellow-500/30"
+                                  : !isHigh
+                                  ? "text-muted-foreground"
+                                  : ""
+                              }`}
+                            >
+                              {severityLabel}
+                            </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="px-4 pb-4">
+                        <CardContent className="px-4 pb-4 space-y-2">
                           <p className="text-xs sm:text-sm font-sans text-muted-foreground leading-relaxed">
-                            {finding}
+                            {finding.description}
                           </p>
+                          {finding.recommendation && (
+                            <p className="text-xs font-mono text-primary/80 border-l-2 border-primary/30 pl-3 leading-relaxed">
+                              {finding.recommendation}
+                            </p>
+                          )}
                         </CardContent>
                       </Card>
                     );
