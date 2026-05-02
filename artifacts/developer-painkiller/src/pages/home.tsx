@@ -239,7 +239,7 @@ function StatusBadge({ status }: { status: string }) {
       return (
         <Badge
           variant="outline"
-          className="bg-primary/10 text-primary border-primary/30 font-mono text-[10px] uppercase shrink-0"
+          className="bg-primary/10 text-primary border-primary/30 font-mono text-[10px] uppercase shrink-0 rounded-none"
         >
           DONE
         </Badge>
@@ -248,7 +248,7 @@ function StatusBadge({ status }: { status: string }) {
       return (
         <Badge
           variant="outline"
-          className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-mono text-[10px] uppercase animate-pulse shrink-0"
+          className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-mono text-[10px] uppercase animate-pulse shrink-0 rounded-none"
         >
           ANALYZING
         </Badge>
@@ -257,7 +257,7 @@ function StatusBadge({ status }: { status: string }) {
       return (
         <Badge
           variant="outline"
-          className="bg-destructive/10 text-destructive border-destructive/20 font-mono text-[10px] uppercase shrink-0"
+          className="bg-destructive/10 text-destructive border-destructive/20 font-mono text-[10px] uppercase shrink-0 rounded-none"
         >
           ERROR
         </Badge>
@@ -266,7 +266,7 @@ function StatusBadge({ status }: { status: string }) {
       return (
         <Badge
           variant="outline"
-          className="bg-muted text-muted-foreground font-mono text-[10px] uppercase shrink-0"
+          className="bg-muted text-muted-foreground font-mono text-[10px] uppercase shrink-0 rounded-none"
         >
           PENDING
         </Badge>
