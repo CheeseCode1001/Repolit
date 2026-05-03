@@ -45,4 +45,18 @@ AI-powered codebase intelligence tool. Users paste a GitHub URL and get:
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
+## Auth Architecture
+
+**Clerk auth** powers user identity. Two env vars may differ across Replit Clerk integrations:
+- `VITE_CLERK_PUBLISHABLE_KEY` — the frontend's Clerk instance (`ready-magpie-15`). Tokens are issued by this instance.
+- `CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — may point to a different instance; not used for token verification.
+
+**API server token verification** (`artifacts/api-server/src/app.ts`):
+- At startup, fetches JWKS from `https://<fapi>/.well-known/jwks.json` (development instances expose it here, not at `/v1/jwks`)
+- Converts the first JWK to PEM using Node's `crypto.createPublicKey`
+- Passes it as `jwtKey` to `clerkMiddleware` — bypasses any network call at request time
+- Frontend sends `Authorization: Bearer <session-token>` via `ClerkAuthTokenRegistrar` in `App.tsx`
+
+**Per-user data isolation**: `repos` table has `userId TEXT NOT NULL` column. All CRUD routes call `getAuth(req)` and scope queries by `userId`.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

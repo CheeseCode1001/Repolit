@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
+import { createPublicKey } from "crypto";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import {
@@ -10,6 +11,65 @@ import {
   clerkProxyMiddleware,
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
+
+// ---------------------------------------------------------------------------
+// Resolve the frontend's Clerk instance public key.
+//
+// VITE_CLERK_PUBLISHABLE_KEY and CLERK_PUBLISHABLE_KEY can be set to different
+// Clerk apps in Replit. We always derive the signing-key material from the
+// same instance that issued the session tokens (i.e. the frontend instance)
+// so that Bearer-token verification succeeds.
+//
+// Clerk's backend SDK fetches JWKS from <fapi>/v1/jwks, but development
+// instances expose it at <fapi>/.well-known/jwks.json instead.  We pre-fetch
+// at startup, convert the first JWK to PEM, and supply it as `jwtKey` so no
+// network round-trip is needed per-request and the wrong path is never hit.
+// ---------------------------------------------------------------------------
+
+const frontendPublishableKey =
+  process.env.VITE_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY;
+
+async function loadClerkJwtKey(): Promise<string | undefined> {
+  if (!frontendPublishableKey) return undefined;
+
+  try {
+    const base64Part = frontendPublishableKey.replace(/^pk_(test|live)_/, "");
+    const fapiDomain = Buffer.from(base64Part, "base64")
+      .toString()
+      .replace(/\$$/, "");
+
+    const url = `https://${fapiDomain}/.well-known/jwks.json`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      logger.warn({ status: res.status, url }, "Clerk JWKS fetch failed");
+      return undefined;
+    }
+
+    const jwks = (await res.json()) as { keys: object[] };
+    if (!Array.isArray(jwks.keys) || jwks.keys.length === 0) {
+      logger.warn("Clerk JWKS response contained no keys");
+      return undefined;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pem = createPublicKey({ key: jwks.keys[0] as any, format: "jwk" }).export({
+      type: "spki",
+      format: "pem",
+    }) as string;
+
+    logger.info({ fapiDomain }, "Clerk JWT key loaded from JWKS");
+    return pem;
+  } catch (err) {
+    logger.error({ err }, "Failed to load Clerk JWKS");
+    return undefined;
+  }
+}
+
+const clerkJwtKey = await loadClerkJwtKey();
+
+// ---------------------------------------------------------------------------
+// Express app
+// ---------------------------------------------------------------------------
 
 const app: Express = express();
 
@@ -43,8 +103,10 @@ app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(
       getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
+      frontendPublishableKey,
     ),
+    secretKey: process.env.CLERK_SECRET_KEY,
+    jwtKey: clerkJwtKey,
   })),
 );
 
