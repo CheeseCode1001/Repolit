@@ -100,14 +100,28 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      frontendPublishableKey,
-    ),
-    secretKey: process.env.CLERK_SECRET_KEY,
-    jwtKey: clerkJwtKey,
-  })),
+  clerkMiddleware((req) => {
+    const host = getClerkProxyHost(req);
+
+    // In production the proxy middleware tells Clerk's backend that the Frontend
+    // API is reachable at <origin>/api/__clerk.  Clerk then stamps that URL as
+    // the JWT `iss` claim.  We must pass the same proxyUrl here so the
+    // middleware accepts those tokens instead of rejecting them for an issuer
+    // mismatch.  In development (NODE_ENV !== "production") the proxy is a
+    // no-op, tokens are issued directly by the Clerk FAPI, and proxyUrl must
+    // be omitted.
+    const proxyUrl =
+      process.env.NODE_ENV === "production" && host
+        ? `${req.headers["x-forwarded-proto"] ?? "https"}://${host}${CLERK_PROXY_PATH}`
+        : undefined;
+
+    return {
+      publishableKey: publishableKeyFromHost(host ?? "", frontendPublishableKey),
+      secretKey: process.env.CLERK_SECRET_KEY,
+      jwtKey: clerkJwtKey,
+      proxyUrl,
+    };
+  }),
 );
 
 app.use("/api", router);

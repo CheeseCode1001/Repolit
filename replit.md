@@ -57,6 +57,11 @@ AI-powered codebase intelligence tool. Users paste a GitHub URL and get:
 - Passes it as `jwtKey` to `clerkMiddleware` — bypasses any network call at request time
 - Frontend sends `Authorization: Bearer <session-token>` via `ClerkAuthTokenRegistrar` in `App.tsx`
 
+**Production proxy + issuer mismatch fix**:
+- In production (`NODE_ENV=production`), `clerkProxyMiddleware` tells Clerk's backend the proxy URL via the `Clerk-Proxy-Url` header. Clerk then stamps that URL as the JWT `iss` (issuer) claim.
+- `clerkMiddleware` must receive the same `proxyUrl` so its issuer check passes. The URL is built dynamically from `x-forwarded-proto` + `x-forwarded-host` + `/api/__clerk` — same logic as the proxy middleware.
+- In dev (`NODE_ENV=development`), `proxyUrl` is omitted so `iss` is checked against the direct FAPI URL.
+
 **Per-user data isolation**: `repos` table has `userId TEXT NOT NULL` column. All CRUD routes call `getAuth(req)` and scope queries by `userId`.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
