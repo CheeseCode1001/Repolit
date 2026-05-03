@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Search, GitBranch, Github, Code, Terminal, Clock, Star, Lock } from "lucide-react";
-import { useListRepos, useGetStats, useCreateRepo } from "@workspace/api-client-react";
+import { useListRepos, useGetStats, useCreateRepo, getListReposQueryKey } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ export function Home() {
 
   const { data: stats, isLoading: statsLoading } = useGetStats();
   const { data: repos, isLoading: reposLoading } = useListRepos({
-    query: { enabled: isSignedIn === true },
+    query: { enabled: isSignedIn === true, queryKey: getListReposQueryKey() },
   });
 
   const createRepo = useCreateRepo();

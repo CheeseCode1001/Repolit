@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -75,6 +76,7 @@ export function RepoDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
 
   const [logs, setLogs] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -125,8 +127,10 @@ export function RepoDashboard() {
     );
 
     try {
+      const token = await getToken();
       const response = await fetch(`/api/repos/${id}/analyze`, {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error("Failed to start analysis");
       if (!response.body) throw new Error("No response body");

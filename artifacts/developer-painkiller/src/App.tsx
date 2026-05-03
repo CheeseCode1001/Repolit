@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useClerk, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,6 +11,7 @@ import { Home } from "@/pages/home";
 import { RepoDashboard } from "@/pages/repo";
 import NotFound from "@/pages/not-found";
 import { SplashScreen } from "@/components/splash-screen";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,19 @@ const clerkAppearance = {
     main: "",
   },
 };
+
+// Registers the Clerk session token as a Bearer token on every API request.
+// This must live inside ClerkProvider so useAuth() works.
+function ClerkAuthTokenRegistrar() {
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+    return () => setAuthTokenGetter(null);
+  }, [getToken]);
+
+  return null;
+}
 
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
@@ -163,6 +177,7 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
+        <ClerkAuthTokenRegistrar />
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
           <Router />
