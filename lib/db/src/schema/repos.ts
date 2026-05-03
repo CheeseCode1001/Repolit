@@ -4,7 +4,8 @@ import { z } from "zod/v4";
 
 export const reposTable = pgTable("repos", {
   id: serial("id").primaryKey(),
-  url: text("url").notNull().unique(),
+  userId: text("user_id").notNull(),
+  url: text("url").notNull(),
   name: text("name").notNull(),
   owner: text("owner").notNull(),
   description: text("description"),

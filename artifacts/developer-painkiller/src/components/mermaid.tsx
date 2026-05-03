@@ -13,10 +13,26 @@ mermaid.initialize({
 });
 
 function cleanChart(raw: string): string {
-  return raw
+  let result = raw
     .replace(/^```(?:mermaid)?\s*/m, '')
     .replace(/\s*```\s*$/m, '')
     .trim();
+
+  // Replace <br> tags with a space — these cause PS token parse errors
+  result = result.replace(/<br\s*\/?>/gi, ' ');
+
+  // Inside square bracket labels [...], strip parentheses and angle brackets
+  // which confuse the Mermaid parser (it tries to read them as shape syntax)
+  result = result.replace(/\[([^\]]*)\]/g, (_match, inner) => {
+    const sanitized = inner
+      .replace(/[()]/g, '')
+      .replace(/[<>]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return `[${sanitized}]`;
+  });
+
+  return result;
 }
 
 interface MermaidProps {

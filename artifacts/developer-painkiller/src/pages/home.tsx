@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Search, GitBranch, Github, Code, Terminal, Clock, Star } from "lucide-react";
+import { Search, GitBranch, Github, Code, Terminal, Clock, Star, Lock } from "lucide-react";
 import { useListRepos, useGetStats, useCreateRepo } from "@workspace/api-client-react";
+import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,15 +14,27 @@ export function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [url, setUrl] = useState("");
+  const { isSignedIn, isLoaded } = useUser();
 
   const { data: stats, isLoading: statsLoading } = useGetStats();
-  const { data: repos, isLoading: reposLoading } = useListRepos();
+  const { data: repos, isLoading: reposLoading } = useListRepos({
+    query: { enabled: isSignedIn === true },
+  });
 
   const createRepo = useCreateRepo();
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
+
+    if (!isSignedIn) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to analyze repositories and save your data.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!url.includes("github.com")) {
       toast({
@@ -83,12 +96,40 @@ export function Home() {
             type="submit"
             size="lg"
             className="h-11 sm:h-12 font-mono font-bold tracking-wider shrink-0 rounded-none"
-            disabled={createRepo.isPending}
+            disabled={createRepo.isPending || !isLoaded}
           >
-            {createRepo.isPending ? "SCANNING..." : "SCAN REPO"}
+            {createRepo.isPending ? (
+              "SCANNING..."
+            ) : !isSignedIn && isLoaded ? (
+              <span className="flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5" /> SIGN IN TO SCAN
+              </span>
+            ) : (
+              "SCAN REPO"
+            )}
           </Button>
         </form>
+
+        {isLoaded && !isSignedIn && (
+          <p className="text-xs font-mono text-muted-foreground/70">
+            <button
+              onClick={() => setLocation("/sign-in")}
+              className="text-primary hover:underline underline-offset-2"
+            >
+              Sign in
+            </button>{" "}
+            or{" "}
+            <button
+              onClick={() => setLocation("/sign-up")}
+              className="text-primary hover:underline underline-offset-2"
+            >
+              create an account
+            </button>{" "}
+            to save and manage your repo analyses.
+          </p>
+        )}
       </section>
+
       {/* Stats */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto w-full">
         <Card className="bg-card/60 backdrop-blur border-border/60 rounded-none">
@@ -159,16 +200,41 @@ export function Home() {
           </CardContent>
         </Card>
       </section>
+
       {/* Recent Repos */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2 border-b border-border/50 pb-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
           <h2 className="text-lg sm:text-xl font-bold font-mono tracking-tight">
-            Recent Scans
+            My Scans
           </h2>
         </div>
 
-        {reposLoading ? (
+        {!isSignedIn && isLoaded ? (
+          <div className="text-center py-14 border border-dashed border-border/50 rounded-lg">
+            <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-50" />
+            <p className="text-muted-foreground font-mono text-sm">
+              Sign in to see your repository analyses.
+            </p>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Button
+                size="sm"
+                className="font-mono text-xs"
+                onClick={() => setLocation("/sign-in")}
+              >
+                Sign In
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="font-mono text-xs"
+                onClick={() => setLocation("/sign-up")}
+              >
+                Create Account
+              </Button>
+            </div>
+          </div>
+        ) : reposLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-32 w-full rounded-lg" />

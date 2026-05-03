@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { reposTable, analysesTable } from "@workspace/db";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, and } from "drizzle-orm";
 import { ai } from "@workspace/integrations-gemini-ai";
+import { getAuth } from "@clerk/express";
 import { z } from "zod";
 
 const router = Router();
@@ -10,6 +11,15 @@ const router = Router();
 const CreateRepoBody = z.object({ url: z.string().url() });
 const IdParam = z.object({ id: z.coerce.number() });
 const ChatBody = z.object({ question: z.string().min(1).max(2000) });
+
+function requireAuth(req: any, res: any): string | null {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+  return userId;
+}
 
 function parseGitHubUrl(url: string): { owner: string; name: string } | null {
   try {
@@ -79,10 +89,15 @@ async function fetchFileContent(owner: string, name: string, path: string): Prom
   }
 }
 
-// GET /api/repos
+// GET /api/repos — returns only the current user's repos
 router.get("/repos", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
   try {
-    const repos = await db.select().from(reposTable).orderBy(desc(reposTable.createdAt)).limit(20);
+    const repos = await db.select().from(reposTable)
+      .where(eq(reposTable.userId, userId))
+      .orderBy(desc(reposTable.createdAt))
+      .limit(20);
     res.json(repos);
   } catch (err) {
     req.log.error({ err }, "Failed to list repos");
@@ -92,6 +107,9 @@ router.get("/repos", async (req, res) => {
 
 // POST /api/repos
 router.post("/repos", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
   const parsed = CreateRepoBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
@@ -108,7 +126,10 @@ router.post("/repos", async (req, res) => {
   const { owner, name } = parsed_url;
 
   try {
-    const existing = await db.select().from(reposTable).where(eq(reposTable.url, url)).limit(1);
+    // Check if this user already has this repo
+    const existing = await db.select().from(reposTable)
+      .where(and(eq(reposTable.url, url), eq(reposTable.userId, userId)))
+      .limit(1);
     if (existing.length > 0) {
       res.status(201).json(existing[0]);
       return;
@@ -116,6 +137,7 @@ router.post("/repos", async (req, res) => {
 
     const meta = await fetchGitHubRepoMeta(owner, name);
     const [repo] = await db.insert(reposTable).values({
+      userId,
       url,
       name,
       owner,
@@ -134,13 +156,17 @@ router.post("/repos", async (req, res) => {
 
 // GET /api/repos/:id
 router.get("/repos/:id", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
   const parsed = IdParam.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
-    const [repo] = await db.select().from(reposTable).where(eq(reposTable.id, parsed.data.id));
+    const [repo] = await db.select().from(reposTable)
+      .where(and(eq(reposTable.id, parsed.data.id), eq(reposTable.userId, userId)));
     if (!repo) {
       res.status(404).json({ error: "Repo not found" });
       return;
@@ -154,13 +180,17 @@ router.get("/repos/:id", async (req, res) => {
 
 // DELETE /api/repos/:id
 router.delete("/repos/:id", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
   const parsed = IdParam.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
-    await db.delete(reposTable).where(eq(reposTable.id, parsed.data.id));
+    await db.delete(reposTable)
+      .where(and(eq(reposTable.id, parsed.data.id), eq(reposTable.userId, userId)));
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete repo");
@@ -170,13 +200,17 @@ router.delete("/repos/:id", async (req, res) => {
 
 // POST /api/repos/:id/analyze — SSE streaming analysis
 router.post("/repos/:id/analyze", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
   const parsed = IdParam.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
 
-  const [repo] = await db.select().from(reposTable).where(eq(reposTable.id, parsed.data.id));
+  const [repo] = await db.select().from(reposTable)
+    .where(and(eq(reposTable.id, parsed.data.id), eq(reposTable.userId, userId)));
   if (!repo) {
     res.status(404).json({ error: "Repo not found" });
     return;
@@ -250,12 +284,24 @@ ${context}`
         parts: [{
           text: `You are a software architect. Generate a Mermaid.js diagram showing the architecture or data flow of this repository.
 
-Output ONLY valid Mermaid syntax (start with graph TD or flowchart TD or sequenceDiagram etc). No markdown fences, no explanation. Make it accurate and specific to this codebase — show real module names, not generic placeholders.
+STRICT RULES for the Mermaid syntax:
+- Output ONLY valid Mermaid syntax. Start with graph TD or flowchart TD or sequenceDiagram.
+- No markdown fences, no explanation text — just the raw Mermaid code.
+- Node labels must NOT contain parentheses (), angle brackets <>, or HTML tags like <br>.
+- Keep node labels short (max 4 words). Use underscores instead of spaces if needed.
+- Use simple alphanumeric node IDs (e.g., A, B, AuthModule, DBLayer).
+- Do NOT include file paths in node labels.
+
+Example of CORRECT syntax:
+graph TD
+    Client --> API_Server
+    API_Server --> Auth_Middleware
+    Auth_Middleware --> DB
 
 ${context}`
         }]
       }],
-      config: { maxOutputTokens: 8192 },
+      config: { maxOutputTokens: 4096 },
     });
 
     send({ step: "Writing onboarding guide..." });
@@ -384,12 +430,23 @@ ${context}`
 
 // GET /api/repos/:id/analysis
 router.get("/repos/:id/analysis", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
   const parsed = IdParam.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
+    // Verify ownership first
+    const [repo] = await db.select({ id: reposTable.id }).from(reposTable)
+      .where(and(eq(reposTable.id, parsed.data.id), eq(reposTable.userId, userId)));
+    if (!repo) {
+      res.status(404).json({ error: "Repo not found" });
+      return;
+    }
+
     const [analysis] = await db.select().from(analysesTable)
       .where(eq(analysesTable.repoId, parsed.data.id))
       .orderBy(desc(analysesTable.createdAt))
@@ -407,6 +464,9 @@ router.get("/repos/:id/analysis", async (req, res) => {
 
 // POST /api/repos/:id/chat — ask a contextual question about the repo
 router.post("/repos/:id/chat", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
   const parsedId = IdParam.safeParse(req.params);
   if (!parsedId.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -422,7 +482,8 @@ router.post("/repos/:id/chat", async (req, res) => {
   const { question } = parsedBody.data;
 
   try {
-    const [repo] = await db.select().from(reposTable).where(eq(reposTable.id, parsedId.data.id));
+    const [repo] = await db.select().from(reposTable)
+      .where(and(eq(reposTable.id, parsedId.data.id), eq(reposTable.userId, userId)));
     if (!repo) {
       res.status(404).json({ error: "Repo not found" });
       return;
@@ -469,17 +530,39 @@ Answer concisely but completely. Use markdown formatting with code blocks and bu
   }
 });
 
-// GET /api/stats
+// GET /api/stats — filtered by current user if authenticated
 router.get("/stats", async (req, res) => {
   try {
-    const [totalReposResult] = await db.select({ count: count() }).from(reposTable);
-    const [totalAnalysesResult] = await db.select({ count: count() }).from(analysesTable);
-    const recentRepos = await db.select().from(reposTable).orderBy(desc(reposTable.createdAt)).limit(5);
+    const { userId } = getAuth(req);
+
+    if (!userId) {
+      // Return zeroed stats for unauthenticated users
+      res.json({ totalRepos: 0, totalAnalyses: 0, languageCounts: {}, recentRepos: [] });
+      return;
+    }
+
+    const [totalReposResult] = await db.select({ count: count() }).from(reposTable)
+      .where(eq(reposTable.userId, userId));
+    const recentRepos = await db.select().from(reposTable)
+      .where(eq(reposTable.userId, userId))
+      .orderBy(desc(reposTable.createdAt))
+      .limit(5);
+
+    // Count analyses for user's repos
+    const userRepoIds = recentRepos.map(r => r.id);
+    let totalAnalysesCount = 0;
+    if (userRepoIds.length > 0) {
+      const [totalAnalysesResult] = await db.select({ count: count() }).from(analysesTable)
+        .where(sql`${analysesTable.repoId} IN (SELECT id FROM repos WHERE user_id = ${userId})`);
+      totalAnalysesCount = Number(totalAnalysesResult.count);
+    }
 
     const langRows = await db.select({
       language: reposTable.language,
       cnt: count(),
-    }).from(reposTable).where(sql`${reposTable.language} IS NOT NULL`).groupBy(reposTable.language);
+    }).from(reposTable)
+      .where(and(eq(reposTable.userId, userId), sql`${reposTable.language} IS NOT NULL`))
+      .groupBy(reposTable.language);
 
     const languageCounts: Record<string, number> = {};
     for (const row of langRows) {
@@ -488,7 +571,7 @@ router.get("/stats", async (req, res) => {
 
     res.json({
       totalRepos: Number(totalReposResult.count),
-      totalAnalyses: Number(totalAnalysesResult.count),
+      totalAnalyses: totalAnalysesCount,
       languageCounts,
       recentRepos,
     });
