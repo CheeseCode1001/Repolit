@@ -129,7 +129,6 @@ export function Home() {
           </p>
         )}
       </section>
-
       {/* Stats */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto w-full">
         <Card className="bg-card/60 backdrop-blur border-border/60 rounded-none">
@@ -200,14 +199,11 @@ export function Home() {
           </CardContent>
         </Card>
       </section>
-
       {/* Recent Repos */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2 border-b border-border/50 pb-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
-          <h2 className="text-lg sm:text-xl font-bold font-mono tracking-tight">
-            My Scans
-          </h2>
+          <h2 className="text-lg sm:text-xl font-bold font-mono tracking-tight">My Repositories</h2>
         </div>
 
         {!isSignedIn && isLoaded ? (
