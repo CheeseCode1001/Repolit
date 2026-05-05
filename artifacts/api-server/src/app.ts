@@ -12,20 +12,55 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 
 // ---------------------------------------------------------------------------
-// Frontend Clerk publishable key
-// Tokens are always signed by the instance that the browser uses, so we must
-// verify against that instance's JWKS — not the backend Clerk integration key.
+// Determine proxyUrl once at startup (production only)
+//
+// Priority:
+//   1. CLERK_PROXY_URL   — set explicitly by admin
+//   2. VITE_CLERK_PROXY_URL — Replit injects this for the frontend build;
+//                             it may also be in the API server process env
+//   3. REPLIT_DOMAINS    — Replit sets this to the production domain(s)
+//   4. fallback to per-request computation from x-forwarded-host header
+// ---------------------------------------------------------------------------
+
+function resolveStaticProxyUrl(): string | undefined {
+  if (process.env.NODE_ENV !== "production") return undefined;
+
+  const candidates: Array<{ src: string; val: string }> = [];
+
+  if (process.env.CLERK_PROXY_URL) {
+    candidates.push({ src: "CLERK_PROXY_URL", val: process.env.CLERK_PROXY_URL });
+  }
+  if (process.env.VITE_CLERK_PROXY_URL) {
+    candidates.push({ src: "VITE_CLERK_PROXY_URL", val: process.env.VITE_CLERK_PROXY_URL });
+  }
+  if (process.env.REPLIT_DOMAINS) {
+    const domain = process.env.REPLIT_DOMAINS.split(",")[0]?.trim();
+    if (domain) {
+      candidates.push({ src: "REPLIT_DOMAINS", val: `https://${domain}${CLERK_PROXY_PATH}` });
+    }
+  }
+
+  if (candidates.length > 0) {
+    const { src, val } = candidates[0];
+    logger.info({ src, proxyUrl: val }, "Clerk static proxyUrl resolved");
+    return val;
+  }
+
+  logger.warn("No static proxyUrl source found — will fall back to per-request header computation");
+  return undefined;
+}
+
+const staticProxyUrl = resolveStaticProxyUrl();
+
+// ---------------------------------------------------------------------------
+// Frontend Clerk publishable key (needed to fetch the right JWKS)
 // ---------------------------------------------------------------------------
 
 const frontendPublishableKey =
   process.env.VITE_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY;
 
 // ---------------------------------------------------------------------------
-// Pre-fetch JWKS at startup and convert the first key to PEM.
-//
-// Development Clerk instances expose JWKS at /.well-known/jwks.json (not at
-// /v1/jwks).  We try both paths and cache the result as `jwtKey` so every
-// request is verified locally with zero network latency.
+// Pre-fetch JWKS at startup and convert to PEM for fast local verification
 // ---------------------------------------------------------------------------
 
 async function loadClerkJwtKey(): Promise<string | undefined> {
@@ -67,6 +102,23 @@ async function loadClerkJwtKey(): Promise<string | undefined> {
 
 const clerkJwtKey = await loadClerkJwtKey();
 
+// Log full startup env diagnostics (non-secret portions only)
+logger.info(
+  {
+    nodeEnv: process.env.NODE_ENV,
+    staticProxyUrl,
+    hasClerkSecretKey: !!process.env.CLERK_SECRET_KEY,
+    hasClerkPublishableKey: !!process.env.CLERK_PUBLISHABLE_KEY,
+    hasViteClerkProxyUrl: !!process.env.VITE_CLERK_PROXY_URL,
+    viteClerkProxyUrl: process.env.VITE_CLERK_PROXY_URL,
+    hasClerkProxyUrl: !!process.env.CLERK_PROXY_URL,
+    clerkProxyUrl: process.env.CLERK_PROXY_URL,
+    replitDomains: process.env.REPLIT_DOMAINS,
+    hasJwtKey: !!clerkJwtKey,
+  },
+  "Clerk startup diagnostics",
+);
+
 // ---------------------------------------------------------------------------
 // Express app
 // ---------------------------------------------------------------------------
@@ -95,19 +147,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ---------------------------------------------------------------------------
-// Clerk middleware — per-request proxyUrl
+// Clerk middleware
 //
-// In production, clerkProxyMiddleware stamps the JWT with
-//   iss = `${protocol}://${host}/api/__clerk`
-// so clerkMiddleware MUST receive the identical proxyUrl, otherwise the
-// issuer check fails and every request gets 401.
+// We use the per-request callback form so we can dynamically compute proxyUrl.
+// Priority: staticProxyUrl (from env vars at startup) → per-request headers.
 //
-// We use the request-callback form so the URL is computed fresh from each
-// request's forwarding headers — the same logic getClerkProxyHost uses in
-// clerkProxyMiddleware, ensuring they always agree.
-//
-// In development (NODE_ENV !== "production") proxyUrl is omitted so the
-// issuer is checked against the direct FAPI URL instead.
+// The proxyUrl MUST match the `iss` claim in the JWT that the frontend's
+// ClerkProvider emits. In production proxy mode that issuer is the proxy URL
+// that was stamped by clerkProxyMiddleware via the Clerk-Proxy-Url header.
 // ---------------------------------------------------------------------------
 
 app.use(
@@ -115,13 +162,25 @@ app.use(
     let proxyUrl: string | undefined;
 
     if (process.env.NODE_ENV === "production") {
-      const host = getClerkProxyHost(req as { headers: Record<string, string | string[] | undefined> });
-      if (host) {
-        const proto =
-          (req.headers["x-forwarded-proto"] as string | undefined)
-            ?.split(",")[0]
-            ?.trim() ?? "https";
-        proxyUrl = `${proto}://${host}${CLERK_PROXY_PATH}`;
+      if (staticProxyUrl) {
+        proxyUrl = staticProxyUrl;
+      } else {
+        // Fall back: compute per-request from forwarded headers
+        const host = getClerkProxyHost(
+          req as { headers: Record<string, string | string[] | undefined> },
+        );
+        if (host) {
+          const proto =
+            (req.headers["x-forwarded-proto"] as string | undefined)
+              ?.split(",")[0]
+              ?.trim() ?? "https";
+          proxyUrl = `${proto}://${host}${CLERK_PROXY_PATH}`;
+
+          req.log?.warn(
+            { proxyUrl, host, xForwardedProto: req.headers["x-forwarded-proto"] },
+            "Clerk proxyUrl computed from headers (no static source)",
+          );
+        }
       }
     }
 
