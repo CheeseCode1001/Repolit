@@ -2,32 +2,43 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
-import { publishableKeyFromHost } from "@clerk/shared/keys";
 import { createPublicKey } from "crypto";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
-  getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 
 // ---------------------------------------------------------------------------
 // Resolve the frontend's Clerk instance public key.
 //
-// VITE_CLERK_PUBLISHABLE_KEY and CLERK_PUBLISHABLE_KEY can be set to different
-// Clerk apps in Replit. We always derive the signing-key material from the
-// same instance that issued the session tokens (i.e. the frontend instance)
-// so that Bearer-token verification succeeds.
-//
-// Clerk's backend SDK fetches JWKS from <fapi>/v1/jwks, but development
-// instances expose it at <fapi>/.well-known/jwks.json instead.  We pre-fetch
-// at startup, convert the first JWK to PEM, and supply it as `jwtKey` so no
-// network round-trip is needed per-request and the wrong path is never hit.
+// VITE_CLERK_PUBLISHABLE_KEY is the key used by the browser — tokens are
+// always signed by that instance's private key, so we must verify against it.
 // ---------------------------------------------------------------------------
 
 const frontendPublishableKey =
   process.env.VITE_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY;
+
+// ---------------------------------------------------------------------------
+// proxyUrl — must match exactly what the browser's ClerkProvider uses.
+//
+// In production Replit sets VITE_CLERK_PROXY_URL to the deployed domain's
+// /api/__clerk path.  When the proxy is active, Clerk stamps that URL as the
+// JWT `iss` claim.  Passing the same value here lets the middleware accept
+// those tokens.  In dev (VITE_CLERK_PROXY_URL unset) proxyUrl stays undefined
+// and the middleware checks iss against the direct FAPI URL instead.
+// ---------------------------------------------------------------------------
+
+const proxyUrl = process.env.VITE_CLERK_PROXY_URL || undefined;
+
+// ---------------------------------------------------------------------------
+// Pre-fetch the JWKS at startup and convert the first key to PEM.
+//
+// Development Clerk instances expose JWKS at /.well-known/jwks.json (not at
+// /v1/jwks).  We fetch it once at startup and pass it as `jwtKey` so no
+// per-request network call is made and the wrong path is never hit.
+// ---------------------------------------------------------------------------
 
 async function loadClerkJwtKey(): Promise<string | undefined> {
   if (!frontendPublishableKey) return undefined;
@@ -38,27 +49,29 @@ async function loadClerkJwtKey(): Promise<string | undefined> {
       .toString()
       .replace(/\$$/, "");
 
-    const url = `https://${fapiDomain}/.well-known/jwks.json`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      logger.warn({ status: res.status, url }, "Clerk JWKS fetch failed");
-      return undefined;
+    // Try standard path first, then well-known path
+    for (const path of ["/v1/jwks", "/.well-known/jwks.json"]) {
+      const url = `https://${fapiDomain}${path}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const jwks = (await res.json()) as { keys: object[] };
+        if (!Array.isArray(jwks.keys) || jwks.keys.length === 0) continue;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pem = createPublicKey({ key: jwks.keys[0] as any, format: "jwk" }).export({
+          type: "spki",
+          format: "pem",
+        }) as string;
+
+        logger.info({ fapiDomain, path }, "Clerk JWT key loaded from JWKS");
+        return pem;
+      } catch {
+        // try next path
+      }
     }
-
-    const jwks = (await res.json()) as { keys: object[] };
-    if (!Array.isArray(jwks.keys) || jwks.keys.length === 0) {
-      logger.warn("Clerk JWKS response contained no keys");
-      return undefined;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pem = createPublicKey({ key: jwks.keys[0] as any, format: "jwk" }).export({
-      type: "spki",
-      format: "pem",
-    }) as string;
-
-    logger.info({ fapiDomain }, "Clerk JWT key loaded from JWKS");
-    return pem;
+    logger.warn({ fapiDomain }, "Clerk JWKS not found at any known path");
+    return undefined;
   } catch (err) {
     logger.error({ err }, "Failed to load Clerk JWKS");
     return undefined;
@@ -100,27 +113,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
-  clerkMiddleware((req) => {
-    const host = getClerkProxyHost(req);
-
-    // In production the proxy middleware tells Clerk's backend that the Frontend
-    // API is reachable at <origin>/api/__clerk.  Clerk then stamps that URL as
-    // the JWT `iss` claim.  We must pass the same proxyUrl here so the
-    // middleware accepts those tokens instead of rejecting them for an issuer
-    // mismatch.  In development (NODE_ENV !== "production") the proxy is a
-    // no-op, tokens are issued directly by the Clerk FAPI, and proxyUrl must
-    // be omitted.
-    const proxyUrl =
-      process.env.NODE_ENV === "production" && host
-        ? `${req.headers["x-forwarded-proto"] ?? "https"}://${host}${CLERK_PROXY_PATH}`
-        : undefined;
-
-    return {
-      publishableKey: publishableKeyFromHost(host ?? "", frontendPublishableKey),
-      secretKey: process.env.CLERK_SECRET_KEY,
-      jwtKey: clerkJwtKey,
-      proxyUrl,
-    };
+  clerkMiddleware({
+    publishableKey: frontendPublishableKey,
+    secretKey: process.env.CLERK_SECRET_KEY,
+    jwtKey: clerkJwtKey,
+    proxyUrl,
   }),
 );
 

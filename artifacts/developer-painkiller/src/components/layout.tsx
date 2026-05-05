@@ -1,8 +1,24 @@
-import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Show, useUser, useClerk } from "@clerk/react";
+import { useTheme } from "next-themes";
+import { Sun, Moon } from "lucide-react";
 const logoIcon = "/logo-icon.png";
+
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <button
+      aria-label="Toggle theme"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="h-7 w-7 flex items-center justify-center border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+    >
+      {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
 
 function UserNav() {
   const { user } = useUser();
@@ -27,10 +43,6 @@ function UserNav() {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
   const [, setLocation] = useLocation();
 
   return (
@@ -52,6 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="flex items-center gap-2">
+            <ThemeToggle />
             <Show when="signed-out">
               <Button
                 variant="ghost"

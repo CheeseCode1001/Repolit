@@ -44,7 +44,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { MermaidDiagram } from "@/components/mermaid";
+import { ArchitectureViewer } from "@/components/architecture-viewer";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -127,9 +127,17 @@ export function RepoDashboard() {
     );
 
     try {
-      const token = await getToken();
+      // Retry getToken once — in production proxy mode the first call can
+      // return null while the session is still being hydrated.
+      let token = await getToken();
+      if (!token) {
+        await new Promise((r) => setTimeout(r, 400));
+        token = await getToken();
+      }
+
       const response = await fetch(`/api/repos/${id}/analyze`, {
         method: "POST",
+        credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error("Failed to start analysis");
@@ -510,7 +518,7 @@ export function RepoDashboard() {
           <div className="mt-3 sm:mt-4">
             <TabsContent value="overview" className="m-0">
               <Card className="border-border/60">
-                <CardContent className="p-4 sm:p-6 md:p-8 prose prose-invert prose-sm sm:prose-base prose-dark-green max-w-none font-sans">
+                <CardContent className="p-4 sm:p-6 md:p-8 prose dark:prose-invert prose-sm sm:prose-base dark:prose-dark-green prose-light-green max-w-none font-sans">
                   {analysis.summary ? (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {analysis.summary}
@@ -585,22 +593,26 @@ export function RepoDashboard() {
             </TabsContent>
 
             <TabsContent value="architecture" className="m-0">
-              <div className="h-72 sm:h-[500px] md:h-[600px]">
-                {analysis.architecture ? (
-                  <MermaidDiagram chart={analysis.architecture} />
-                ) : (
-                  <Card className="h-full flex items-center justify-center border-dashed border-border/50">
+              {analysis.architecture ? (
+                <ArchitectureViewer chart={analysis.architecture} />
+              ) : (
+                <Card className="border-dashed border-border/50 py-20">
+                  <CardContent className="flex flex-col items-center justify-center text-center p-0">
+                    <Map className="w-8 h-8 text-muted-foreground mb-2 opacity-40" />
                     <p className="text-muted-foreground font-mono text-sm">
                       No architecture diagram available.
                     </p>
-                  </Card>
-                )}
-              </div>
+                    <p className="text-xs text-muted-foreground/60 font-mono mt-1">
+                      Re-analyze this repository to generate a diagram.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="onboarding" className="m-0">
               <Card className="border-border/60">
-                <CardContent className="p-4 sm:p-6 md:p-8 prose prose-invert prose-sm sm:prose-base prose-dark-green max-w-none font-sans">
+                <CardContent className="p-4 sm:p-6 md:p-8 prose dark:prose-invert prose-sm sm:prose-base dark:prose-dark-green prose-light-green max-w-none font-sans">
                   {analysis.onboarding ? (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {analysis.onboarding}
@@ -739,7 +751,7 @@ export function RepoDashboard() {
                               className={`max-w-[85%] rounded-none px-3 py-2.5 text-sm font-sans leading-relaxed ${
                                 msg.role === "user"
                                   ? "bg-primary/10 border border-primary/20 text-foreground"
-                                  : "bg-muted/40 border border-border/50 text-foreground prose prose-invert prose-sm max-w-none"
+                                  : "bg-muted/40 border border-border/50 text-foreground prose dark:prose-invert prose-sm max-w-none"
                               }`}
                             >
                               {msg.role === "assistant" ? (

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, useClerk, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
@@ -81,12 +82,22 @@ const clerkAppearance = {
 };
 
 // Registers the Clerk session token as a Bearer token on every API request.
-// This must live inside ClerkProvider so useAuth() works.
+// Must live inside ClerkProvider so useAuth() works.
 function ClerkAuthTokenRegistrar() {
   const { getToken } = useAuth();
 
   useEffect(() => {
-    setAuthTokenGetter(() => getToken());
+    // Wrap getToken in a retry — in production proxy mode the first call
+    // sometimes returns null while the session is still being established.
+    const wrappedGetter = async () => {
+      let token = await getToken();
+      if (!token) {
+        await new Promise((r) => setTimeout(r, 300));
+        token = await getToken();
+      }
+      return token;
+    };
+    setAuthTokenGetter(wrappedGetter);
     return () => setAuthTokenGetter(null);
   }, [getToken]);
 
@@ -192,12 +203,12 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   return (
-    <>
+    <ThemeProvider attribute="class" defaultTheme="dark" storageKey="repograph-theme">
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <WouterRouter base={basePath}>
         <ClerkProviderWithRoutes />
       </WouterRouter>
-    </>
+    </ThemeProvider>
   );
 }
 
