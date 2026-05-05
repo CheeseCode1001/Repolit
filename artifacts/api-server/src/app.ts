@@ -8,36 +8,24 @@ import { logger } from "./lib/logger";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
+  getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 
 // ---------------------------------------------------------------------------
-// Resolve the frontend's Clerk instance public key.
-//
-// VITE_CLERK_PUBLISHABLE_KEY is the key used by the browser — tokens are
-// always signed by that instance's private key, so we must verify against it.
+// Frontend Clerk publishable key
+// Tokens are always signed by the instance that the browser uses, so we must
+// verify against that instance's JWKS — not the backend Clerk integration key.
 // ---------------------------------------------------------------------------
 
 const frontendPublishableKey =
   process.env.VITE_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY;
 
 // ---------------------------------------------------------------------------
-// proxyUrl — must match exactly what the browser's ClerkProvider uses.
-//
-// In production Replit sets VITE_CLERK_PROXY_URL to the deployed domain's
-// /api/__clerk path.  When the proxy is active, Clerk stamps that URL as the
-// JWT `iss` claim.  Passing the same value here lets the middleware accept
-// those tokens.  In dev (VITE_CLERK_PROXY_URL unset) proxyUrl stays undefined
-// and the middleware checks iss against the direct FAPI URL instead.
-// ---------------------------------------------------------------------------
-
-const proxyUrl = process.env.VITE_CLERK_PROXY_URL || undefined;
-
-// ---------------------------------------------------------------------------
-// Pre-fetch the JWKS at startup and convert the first key to PEM.
+// Pre-fetch JWKS at startup and convert the first key to PEM.
 //
 // Development Clerk instances expose JWKS at /.well-known/jwks.json (not at
-// /v1/jwks).  We fetch it once at startup and pass it as `jwtKey` so no
-// per-request network call is made and the wrong path is never hit.
+// /v1/jwks).  We try both paths and cache the result as `jwtKey` so every
+// request is verified locally with zero network latency.
 // ---------------------------------------------------------------------------
 
 async function loadClerkJwtKey(): Promise<string | undefined> {
@@ -49,7 +37,6 @@ async function loadClerkJwtKey(): Promise<string | undefined> {
       .toString()
       .replace(/\$$/, "");
 
-    // Try standard path first, then well-known path
     for (const path of ["/v1/jwks", "/.well-known/jwks.json"]) {
       const url = `https://${fapiDomain}${path}`;
       try {
@@ -91,33 +78,59 @@ app.use(
     logger,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
 );
 
+// Clerk proxy must be mounted before json/urlencoded body parsers
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ---------------------------------------------------------------------------
+// Clerk middleware — per-request proxyUrl
+//
+// In production, clerkProxyMiddleware stamps the JWT with
+//   iss = `${protocol}://${host}/api/__clerk`
+// so clerkMiddleware MUST receive the identical proxyUrl, otherwise the
+// issuer check fails and every request gets 401.
+//
+// We use the request-callback form so the URL is computed fresh from each
+// request's forwarding headers — the same logic getClerkProxyHost uses in
+// clerkProxyMiddleware, ensuring they always agree.
+//
+// In development (NODE_ENV !== "production") proxyUrl is omitted so the
+// issuer is checked against the direct FAPI URL instead.
+// ---------------------------------------------------------------------------
+
 app.use(
-  clerkMiddleware({
-    publishableKey: frontendPublishableKey,
-    secretKey: process.env.CLERK_SECRET_KEY,
-    jwtKey: clerkJwtKey,
-    proxyUrl,
+  clerkMiddleware((req) => {
+    let proxyUrl: string | undefined;
+
+    if (process.env.NODE_ENV === "production") {
+      const host = getClerkProxyHost(req as { headers: Record<string, string | string[] | undefined> });
+      if (host) {
+        const proto =
+          (req.headers["x-forwarded-proto"] as string | undefined)
+            ?.split(",")[0]
+            ?.trim() ?? "https";
+        proxyUrl = `${proto}://${host}${CLERK_PROXY_PATH}`;
+      }
+    }
+
+    return {
+      publishableKey: frontendPublishableKey,
+      secretKey: process.env.CLERK_SECRET_KEY,
+      jwtKey: clerkJwtKey,
+      proxyUrl,
+    };
   }),
 );
 
