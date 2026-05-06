@@ -131,7 +131,7 @@ router.post("/repos", async (req, res) => {
       .where(and(eq(reposTable.url, url), eq(reposTable.userId, userId)))
       .limit(1);
     if (existing.length > 0) {
-      res.status(201).json(existing[0]);
+      res.status(200).json(existing[0]);
       return;
     }
 
@@ -209,10 +209,18 @@ router.post("/repos/:id/analyze", async (req, res) => {
     return;
   }
 
-  const [repo] = await db.select().from(reposTable)
-    .where(and(eq(reposTable.id, parsed.data.id), eq(reposTable.userId, userId)));
-  if (!repo) {
-    res.status(404).json({ error: "Repo not found" });
+  let repo: typeof reposTable.$inferSelect;
+  try {
+    const [found] = await db.select().from(reposTable)
+      .where(and(eq(reposTable.id, parsed.data.id), eq(reposTable.userId, userId)));
+    if (!found) {
+      res.status(404).json({ error: "Repo not found" });
+      return;
+    }
+    repo = found;
+  } catch (err) {
+    req.log.error({ err }, "Failed to look up repo before analysis");
+    res.status(500).json({ error: "Internal server error" });
     return;
   }
 
@@ -220,7 +228,12 @@ router.post("/repos/:id/analyze", async (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+  let aborted = false;
+  req.on("close", () => { aborted = true; });
+
+  const send = (data: object) => {
+    if (!aborted) res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
 
   try {
     await db.update(reposTable).set({ status: "analyzing" }).where(eq(reposTable.id, repo.id));

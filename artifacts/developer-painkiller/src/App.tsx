@@ -87,12 +87,15 @@ function ClerkAuthTokenRegistrar() {
   const { getToken } = useAuth();
 
   useEffect(() => {
-    // Wrap getToken in a retry — in production proxy mode the first call
-    // sometimes returns null while the session is still being established.
+    // Wrap getToken with retries — in production proxy mode the first call
+    // often returns null while the short-lived JWT is still being fetched.
+    // We retry up to 3 times with increasing delays before giving up.
     const wrappedGetter = async () => {
+      const delays = [200, 600, 1200];
       let token = await getToken();
-      if (!token) {
-        await new Promise((r) => setTimeout(r, 300));
+      for (const delay of delays) {
+        if (token) break;
+        await new Promise((r) => setTimeout(r, delay));
         token = await getToken();
       }
       return token;

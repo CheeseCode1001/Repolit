@@ -25,24 +25,34 @@ import {
 function resolveStaticProxyUrl(): string | undefined {
   if (process.env.NODE_ENV !== "production") return undefined;
 
-  const candidates: Array<{ src: string; val: string }> = [];
+  // REPLIT_DOMAINS is the authoritative production domain — always use it to
+  // build an absolute proxy URL, even when CLERK_PROXY_URL / VITE_CLERK_PROXY_URL
+  // are set but contain only a relative path like "/api/__clerk".
+  const domain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+
+  const makeAbsolute = (val: string): string => {
+    if (val.startsWith("https://") || val.startsWith("http://")) return val;
+    // Relative path — promote to absolute using the production domain.
+    if (domain) return `https://${domain}${val.startsWith("/") ? val : `/${val}`}`;
+    return val; // Can't promote without domain; will likely fail — warn below.
+  };
+
+  const candidates: Array<{ src: string; raw: string }> = [];
 
   if (process.env.CLERK_PROXY_URL) {
-    candidates.push({ src: "CLERK_PROXY_URL", val: process.env.CLERK_PROXY_URL });
+    candidates.push({ src: "CLERK_PROXY_URL", raw: process.env.CLERK_PROXY_URL });
   }
   if (process.env.VITE_CLERK_PROXY_URL) {
-    candidates.push({ src: "VITE_CLERK_PROXY_URL", val: process.env.VITE_CLERK_PROXY_URL });
+    candidates.push({ src: "VITE_CLERK_PROXY_URL", raw: process.env.VITE_CLERK_PROXY_URL });
   }
-  if (process.env.REPLIT_DOMAINS) {
-    const domain = process.env.REPLIT_DOMAINS.split(",")[0]?.trim();
-    if (domain) {
-      candidates.push({ src: "REPLIT_DOMAINS", val: `https://${domain}${CLERK_PROXY_PATH}` });
-    }
+  if (domain) {
+    candidates.push({ src: "REPLIT_DOMAINS", raw: `https://${domain}${CLERK_PROXY_PATH}` });
   }
 
   if (candidates.length > 0) {
-    const { src, val } = candidates[0];
-    logger.info({ src, proxyUrl: val }, "Clerk static proxyUrl resolved");
+    const { src, raw } = candidates[0];
+    const val = makeAbsolute(raw);
+    logger.info({ src, raw, proxyUrl: val }, "Clerk static proxyUrl resolved");
     return val;
   }
 
