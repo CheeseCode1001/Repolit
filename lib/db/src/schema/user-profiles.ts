@@ -11,6 +11,8 @@ export const userProfilesTable = pgTable("user_profiles", {
   avatarConfig: text("avatar_config"),
   points: integer("points").notNull().default(0),
   extraScansUnlocked: integer("extra_scans_unlocked").notNull().default(0),
+  githubAccessToken: text("github_access_token"),
+  githubUsername: text("github_username"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

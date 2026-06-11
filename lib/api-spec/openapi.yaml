@@ -18,6 +18,8 @@ tags:
     description: User profile operations
   - name: sharing
     description: Repo sharing operations
+  - name: github
+    description: GitHub OAuth integration
 paths:
   /healthz:
     get:
@@ -268,6 +270,64 @@ paths:
               schema:
                 $ref: "#/components/schemas/Stats"
 
+  /github/oauth/start:
+    get:
+      operationId: startGitHubOAuth
+      tags: [github]
+      summary: Get the GitHub OAuth authorization URL
+      responses:
+        "200":
+          description: GitHub OAuth URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubOAuthStartResponse"
+
+  /github/repos:
+    get:
+      operationId: getGitHubRepos
+      tags: [github]
+      summary: List the authenticated user's GitHub repositories
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of GitHub repositories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GitHubRepo"
+
+  /github/disconnect:
+    delete:
+      operationId: disconnectGitHub
+      tags: [github]
+      summary: Disconnect GitHub integration
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+
   /profile:
     get:
       operationId: getProfile
@@ -457,6 +517,46 @@ components:
       required:
         - repo
 
+    GitHubOAuthStartResponse:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    GitHubRepo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        fullName:
+          type: string
+        description:
+          type: string
+          nullable: true
+        htmlUrl:
+          type: string
+        private:
+          type: boolean
+        language:
+          type: string
+          nullable: true
+        stargazersCount:
+          type: integer
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - fullName
+        - htmlUrl
+        - private
+        - stargazersCount
+        - updatedAt
+
     UserProfile:
       type: object
       properties:
@@ -480,6 +580,9 @@ components:
           type: integer
         extraScansUnlocked:
           type: integer
+        githubUsername:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time

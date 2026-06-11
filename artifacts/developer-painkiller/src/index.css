@@ -72,8 +72,8 @@
   --popover-foreground: 240 10% 3.9%;
   --popover-border: 240 5.9% 88%;
 
-  --primary: 142.1 76.2% 36.3%;
-  --primary-foreground: 355.7 100% 97.3%;
+  --primary: 267 94% 51%;
+  --primary-foreground: 0 0% 98%;
 
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 5.9% 10%;
@@ -89,11 +89,11 @@
 
   --border: 240 5.9% 88%;
   --input: 240 5.9% 88%;
-  --ring: 142.1 76.2% 36.3%;
+  --ring: 267 94% 51%;
 
   --radius: 0rem;
 
-  --chart-1: 142.1 76.2% 36.3%;
+  --chart-1: 267 94% 51%;
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 45%;
   --chart-4: 43 74% 56%;
@@ -101,12 +101,12 @@
 
   --sidebar: 0 0% 98%;
   --sidebar-foreground: 240 5.3% 26.1%;
-  --sidebar-primary: 142.1 76.2% 36.3%;
+  --sidebar-primary: 267 94% 51%;
   --sidebar-primary-foreground: 0 0% 98%;
   --sidebar-accent: 240 4.8% 95.9%;
   --sidebar-accent-foreground: 240 5.9% 10%;
   --sidebar-border: 240 5.9% 88%;
-  --sidebar-ring: 142.1 76.2% 36.3%;
+  --sidebar-ring: 267 94% 51%;
 
   --app-font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   --app-font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -125,8 +125,8 @@
   --popover-foreground: 0 0% 98%;
   --popover-border: 240 3.7% 15.9%;
 
-  --primary: 142.1 70.6% 45.3%;
-  --primary-foreground: 144 61% 8%;
+  --primary: 267 90% 62%;
+  --primary-foreground: 0 0% 98%;
 
   --secondary: 240 3.7% 14%;
   --secondary-foreground: 0 0% 98%;
@@ -142,9 +142,9 @@
 
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --ring: 142.1 70.6% 45.3%;
+  --ring: 267 90% 62%;
 
-  --chart-1: 142.1 70.6% 45.3%;
+  --chart-1: 267 90% 62%;
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
   --chart-4: 43 74% 66%;
@@ -152,12 +152,12 @@
 
   --sidebar: 240 4.8% 7%;
   --sidebar-foreground: 240 4.8% 95.9%;
-  --sidebar-primary: 142.1 70.6% 45.3%;
-  --sidebar-primary-foreground: 144 61% 8%;
+  --sidebar-primary: 267 90% 62%;
+  --sidebar-primary-foreground: 0 0% 98%;
   --sidebar-accent: 240 3.7% 14%;
   --sidebar-accent-foreground: 240 4.8% 95.9%;
   --sidebar-border: 240 3.7% 15.9%;
-  --sidebar-ring: 142.1 70.6% 45.3%;
+  --sidebar-ring: 267 90% 62%;
 }
 
 @layer base {
@@ -187,7 +187,7 @@
     background: transparent;
   }
   .terminal-scroll::-webkit-scrollbar-thumb {
-    background: hsl(142.1 70.6% 45.3% / 0.4);
+    background: hsl(267 90% 62% / 0.4);
     border-radius: 3px;
   }
 
@@ -195,15 +195,15 @@
   .prose-dark-green {
     --tw-prose-body: hsl(0 0% 88%);
     --tw-prose-headings: hsl(0 0% 98%);
-    --tw-prose-links: hsl(142.1 70.6% 55%);
+    --tw-prose-links: hsl(267 90% 65%);
     --tw-prose-bold: hsl(0 0% 98%);
     --tw-prose-counters: hsl(240 5% 64.9%);
-    --tw-prose-bullets: hsl(142.1 70.6% 45.3%);
+    --tw-prose-bullets: hsl(267 90% 62%);
     --tw-prose-hr: hsl(240 3.7% 20%);
     --tw-prose-quotes: hsl(0 0% 98%);
-    --tw-prose-quote-borders: hsl(142.1 70.6% 45.3%);
+    --tw-prose-quote-borders: hsl(267 90% 62%);
     --tw-prose-captions: hsl(240 5% 64.9%);
-    --tw-prose-code: hsl(142.1 70.6% 65%);
+    --tw-prose-code: hsl(267 90% 72%);
     --tw-prose-pre-code: hsl(0 0% 90%);
     --tw-prose-pre-bg: hsl(240 4.8% 8%);
     --tw-prose-th-borders: hsl(240 3.7% 20%);
@@ -214,15 +214,15 @@
   .prose-light-green {
     --tw-prose-body: hsl(240 10% 20%);
     --tw-prose-headings: hsl(240 10% 3.9%);
-    --tw-prose-links: hsl(142.1 76.2% 30%);
+    --tw-prose-links: hsl(267 94% 38%);
     --tw-prose-bold: hsl(240 10% 3.9%);
     --tw-prose-counters: hsl(240 3.7% 46%);
-    --tw-prose-bullets: hsl(142.1 76.2% 36.3%);
+    --tw-prose-bullets: hsl(267 94% 51%);
     --tw-prose-hr: hsl(240 5.9% 88%);
     --tw-prose-quotes: hsl(240 10% 3.9%);
-    --tw-prose-quote-borders: hsl(142.1 76.2% 36.3%);
+    --tw-prose-quote-borders: hsl(267 94% 51%);
     --tw-prose-captions: hsl(240 3.7% 46%);
-    --tw-prose-code: hsl(142.1 76.2% 30%);
+    --tw-prose-code: hsl(267 94% 38%);
     --tw-prose-pre-code: hsl(240 10% 20%);
     --tw-prose-pre-bg: hsl(240 4.8% 95.9%);
     --tw-prose-th-borders: hsl(240 5.9% 88%);

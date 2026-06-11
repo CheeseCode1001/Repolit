@@ -1,4 +1,4 @@
-const ANON_ID_KEY = "repograph-anon-id";
+const ANON_ID_KEY = "repolit-anon-id";
 
 /**
  * Returns the current anonymous session ID, generating one if it doesn't exist.

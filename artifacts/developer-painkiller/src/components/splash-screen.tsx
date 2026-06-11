@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-const logoIcon = "/logo-icon.png";
 
 interface SplashScreenProps {
   onDone: () => void;
@@ -11,8 +10,8 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
 
   useEffect(() => {
     const showTimer = setTimeout(() => setVisible(true), 60);
-    const fadeTimer = setTimeout(() => setFadeOut(true), 2800);
-    const doneTimer = setTimeout(() => onDone(), 3100);
+    const fadeTimer = setTimeout(() => setFadeOut(true), 2600);
+    const doneTimer = setTimeout(() => onDone(), 2900);
     return () => {
       clearTimeout(showTimer);
       clearTimeout(fadeTimer);
@@ -22,60 +21,32 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] bg-[hsl(240,5.9%,5%)] flex flex-col items-center justify-center gap-5 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center transition-opacity duration-300 ${
         fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
-      {/* Subtle scanline texture */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        {Array.from({ length: 40 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-full h-px bg-primary/5"
-            style={{ top: `${i * 2.5}%` }}
-          />
-        ))}
-      </div>
-
-      {/* Corner accents */}
-      <div className="absolute top-6 left-6 w-6 h-6 border-t-2 border-l-2 border-primary/40" />
-      <div className="absolute top-6 right-6 w-6 h-6 border-t-2 border-r-2 border-primary/40" />
-      <div className="absolute bottom-6 left-6 w-6 h-6 border-b-2 border-l-2 border-primary/40" />
-      <div className="absolute bottom-6 right-6 w-6 h-6 border-b-2 border-r-2 border-primary/40" />
-
-      {/* Logo */}
+      {/* Logo centered */}
       <img
-        src={logoIcon}
-        alt="Repograph"
-        className={`w-32 h-32 object-contain transition-all duration-700 ease-out ${
+        src="/icons/icon-512.png"
+        alt="Repolit"
+        className={`w-24 h-24 object-contain transition-all duration-700 ease-out ${
           visible ? "scale-100 opacity-100" : "scale-75 opacity-0"
         }`}
+        style={{ borderRadius: "22%" }}
       />
 
-      {/* Text block */}
+      {/* Brand name at bottom */}
       <div
-        className={`flex flex-col items-center gap-1.5 transition-all duration-700 delay-150 ease-out ${
-          visible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+        className={`absolute bottom-14 transition-all duration-700 delay-200 ease-out ${
+          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
         }`}
       >
-        <span className="font-mono font-bold tracking-[0.35em] text-xl text-primary uppercase">
-          repograph
+        <span
+          className="font-sans font-bold text-[2rem] tracking-tight text-primary select-none"
+          style={{ letterSpacing: "-0.01em" }}
+        >
+          repolit
         </span>
-        <span className="font-mono text-[10px] text-muted-foreground tracking-[0.25em] uppercase">
-          AI-powered repo analysis
-        </span>
-      </div>
-
-      {/* Loading bar */}
-      <div
-        className={`w-32 h-px bg-border overflow-hidden transition-all duration-700 delay-300 ease-out ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <div
-          className="h-full bg-primary transition-all duration-[1400ms] ease-out delay-200"
-          style={{ width: visible ? "100%" : "0%" }}
-        />
       </div>
     </div>
   );

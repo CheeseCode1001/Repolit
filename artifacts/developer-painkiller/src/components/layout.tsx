@@ -7,7 +7,7 @@ import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-reac
 import Avatar from "boring-avatars";
 
 const logoIcon = "/logo-icon.png";
-const AVATAR_COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#fb923c", "#a78bfa", "#fbbf24"];
+const AVATAR_COLORS = ["#760BF7", "#a855f7", "#c084fc", "#e879f9", "#f472b6", "#818cf8"];
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -92,11 +92,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           >
             <img
               src={logoIcon}
-              alt="Repograph"
+              alt="Repolit"
               className="h-8 w-8 object-contain"
+              style={{ borderRadius: "22%" }}
             />
-            <span className="font-mono font-bold tracking-tight sm:text-base text-primary text-[20px]">
-              repograph
+            <span className="font-sans font-bold tracking-tight sm:text-base text-primary text-[23px]">
+              repolit
             </span>
           </Link>
 
@@ -129,7 +130,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-border/50 py-5">
         <div className="container max-w-screen-xl flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-center text-xs text-muted-foreground font-mono">
-            repograph — AI-powered repo analysis
+            repolit — AI-powered repo analysis
           </p>
           <p className="text-xs text-muted-foreground font-mono opacity-50">
             Powered by Gemini 2.5 Flash

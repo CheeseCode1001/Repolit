@@ -203,7 +203,7 @@ function ClerkProviderWithRoutes() {
         signIn: {
           start: {
             title: "Welcome back",
-            subtitle: "Sign in to your Repograph account",
+            subtitle: "Sign in to your Repolit account",
           },
         },
         signUp: {
@@ -232,7 +232,7 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" storageKey="repograph-theme">
+    <ThemeProvider attribute="class" defaultTheme="dark" storageKey="repolit-theme">
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <WouterRouter base={basePath}>
         <ClerkProviderWithRoutes />
