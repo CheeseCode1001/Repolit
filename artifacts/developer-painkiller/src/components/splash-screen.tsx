@@ -27,14 +27,13 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
     >
       {/* Logo centered */}
       <img
-        src="/icons/icon-512.png"
+        src="/icons/logo.png"
         alt="Repolit"
         className={`w-24 h-24 object-contain transition-all duration-700 ease-out ${
           visible ? "scale-100 opacity-100" : "scale-75 opacity-0"
         }`}
         style={{ borderRadius: "22%" }}
       />
-
       {/* Brand name at bottom */}
       <div
         className={`absolute bottom-14 transition-all duration-700 delay-200 ease-out ${
