@@ -3,11 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Show, useUser, useClerk } from "@clerk/react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, User } from "lucide-react";
-import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
+import {
+  useGetProfile,
+  getGetProfileQueryKey,
+} from "@workspace/api-client-react";
 import Avatar from "boring-avatars";
 
 const logoIcon = "/logo-icon.png";
-const AVATAR_COLORS = ["#760BF7", "#a855f7", "#c084fc", "#e879f9", "#f472b6", "#818cf8"];
+const AVATAR_COLORS = [
+  "#760BF7",
+  "#a855f7",
+  "#c084fc",
+  "#e879f9",
+  "#f472b6",
+  "#818cf8",
+];
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -19,7 +29,11 @@ function ThemeToggle() {
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className="h-7 w-7 flex items-center justify-center border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors"
     >
-      {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+      {isDark ? (
+        <Sun className="w-3.5 h-3.5" />
+      ) : (
+        <Moon className="w-3.5 h-3.5" />
+      )}
     </button>
   );
 }
@@ -43,12 +57,7 @@ function ProfileButton() {
       title="Your Profile"
     >
       {user ? (
-        <Avatar
-          size={28}
-          name={seed}
-          variant="beam"
-          colors={AVATAR_COLORS}
-        />
+        <Avatar size={28} name={seed} variant="beam" colors={AVATAR_COLORS} />
       ) : (
         <User className="w-3.5 h-3.5" />
       )}
@@ -96,7 +105,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               className="h-8 w-8 object-contain"
               style={{ borderRadius: "22%" }}
             />
-            <span className="font-sans font-bold tracking-tight sm:text-base text-primary text-[23px]">
+            <span className="font-sans font-bold tracking-tight text-primary text-[23px]">
               repolit
             </span>
           </Link>

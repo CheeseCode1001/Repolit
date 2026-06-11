@@ -27,7 +27,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
     >
       {/* Logo centered */}
       <img
-        src="/icons/logo.png"
+        src="/logo-icon.png"
         alt="Repolit"
         className={`w-24 h-24 object-contain transition-all duration-700 ease-out ${
           visible ? "scale-100 opacity-100" : "scale-75 opacity-0"
@@ -41,7 +41,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
         }`}
       >
         <span
-          className="font-sans font-bold text-[2rem] tracking-tight text-primary select-none"
+          className="font-sans font-bold text-[2.5rem] tracking-tight text-primary select-none"
           style={{ letterSpacing: "-0.01em" }}
         >
           repolit
