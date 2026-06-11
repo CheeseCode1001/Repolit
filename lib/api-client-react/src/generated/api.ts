@@ -22,6 +22,10 @@ import type {
   ChatBody,
   ChatResponse,
   CreateRepoBody,
+  DisconnectGitHub200,
+  GetGitHubReposParams,
+  GitHubOAuthStartResponse,
+  GitHubRepo,
   HealthStatus,
   Repo,
   ShareTokenResponse,
@@ -1013,6 +1017,262 @@ export function useGetStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get the GitHub OAuth authorization URL
+ */
+export const getStartGitHubOAuthUrl = () => {
+  return `/api/github/oauth/start`;
+};
+
+export const startGitHubOAuth = async (
+  options?: RequestInit,
+): Promise<GitHubOAuthStartResponse> => {
+  return customFetch<GitHubOAuthStartResponse>(getStartGitHubOAuthUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getStartGitHubOAuthMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startGitHubOAuth>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startGitHubOAuth>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["startGitHubOAuth"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startGitHubOAuth>>,
+    void
+  > = () => {
+    return startGitHubOAuth(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartGitHubOAuthMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startGitHubOAuth>>
+>;
+
+export type StartGitHubOAuthMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Get the GitHub OAuth authorization URL
+ */
+export const useStartGitHubOAuth = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startGitHubOAuth>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startGitHubOAuth>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getStartGitHubOAuthMutationOptions(options));
+};
+
+/**
+ * @summary List the authenticated user's GitHub repositories
+ */
+export const getGetGitHubReposUrl = (params?: GetGitHubReposParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/github/repos?${stringifiedParams}`
+    : `/api/github/repos`;
+};
+
+export const getGitHubRepos = async (
+  params?: GetGitHubReposParams,
+  options?: RequestInit,
+): Promise<GitHubRepo[]> => {
+  return customFetch<GitHubRepo[]>(getGetGitHubReposUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGitHubReposQueryKey = (params?: GetGitHubReposParams) => {
+  return [`/api/github/repos`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetGitHubReposQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGitHubRepos>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetGitHubReposParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGitHubRepos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGitHubReposQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGitHubRepos>>> = ({
+    signal,
+  }) => getGitHubRepos(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGitHubRepos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGitHubReposQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGitHubRepos>>
+>;
+export type GetGitHubReposQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the authenticated user's GitHub repositories
+ */
+
+export function useGetGitHubRepos<
+  TData = Awaited<ReturnType<typeof getGitHubRepos>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetGitHubReposParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGitHubRepos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGitHubReposQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Disconnect GitHub integration
+ */
+export const getDisconnectGitHubUrl = () => {
+  return `/api/github/disconnect`;
+};
+
+export const disconnectGitHub = async (
+  options?: RequestInit,
+): Promise<DisconnectGitHub200> => {
+  return customFetch<DisconnectGitHub200>(getDisconnectGitHubUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDisconnectGitHubMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectGitHub>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof disconnectGitHub>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["disconnectGitHub"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof disconnectGitHub>>,
+    void
+  > = () => {
+    return disconnectGitHub(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisconnectGitHubMutationResult = NonNullable<
+  Awaited<ReturnType<typeof disconnectGitHub>>
+>;
+
+export type DisconnectGitHubMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Disconnect GitHub integration
+ */
+export const useDisconnectGitHub = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectGitHub>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof disconnectGitHub>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDisconnectGitHubMutationOptions(options));
+};
 
 /**
  * @summary Get the current user's profile

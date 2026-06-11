@@ -27,7 +27,7 @@ function pruneStates() {
   }
 }
 
-router.get("/github/oauth/start", (req, res) => {
+router.post("/github/oauth/start", (req, res) => {
   const userId = requireClerkAuth(req, res);
   if (!userId) return;
   if (!GITHUB_CLIENT_ID) {

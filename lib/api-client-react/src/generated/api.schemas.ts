@@ -73,6 +73,22 @@ export interface SharedAnalysisResponse {
   analysis?: Analysis | null;
 }
 
+export interface GitHubOAuthStartResponse {
+  url: string;
+}
+
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  description?: string | null;
+  htmlUrl: string;
+  private: boolean;
+  language?: string | null;
+  stargazersCount: number;
+  updatedAt: string;
+}
+
 export interface UserProfile {
   userId: string;
   isAnon: boolean;
@@ -82,6 +98,7 @@ export interface UserProfile {
   avatarConfig?: string | null;
   points: number;
   extraScansUnlocked: number;
+  githubUsername?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -95,4 +112,14 @@ export interface UpdateProfileBody {
 
 export type UploadRepoBody = {
   file?: Blob;
+};
+
+export type GetGitHubReposParams = {
+  q?: string;
+  page?: number;
+  per_page?: number;
+};
+
+export type DisconnectGitHub200 = {
+  ok: boolean;
 };

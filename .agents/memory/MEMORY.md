@@ -1,3 +1,4 @@
-- [Repograph feature set](repograph-features.md) — anon sessions, gamification, profile/avatar, repo sharing, React Flow arch, commit history, zip upload all implemented.
+- [Repolit feature set](repograph-features.md) — anon sessions, gamification, profile/avatar, repo sharing, React Flow arch, commit history, zip upload all implemented. Brand: Repolit, #760BF7 purple.
+- [GitHub OAuth setup](github-oauth-setup.md) — GitHub repo browser in profile requires GITHUB_OAUTH_CLIENT_ID + GITHUB_OAUTH_CLIENT_SECRET env vars and a GitHub OAuth App with callback URL /api/github/oauth/callback.
 - [API codegen tsconfig](api-zod-tsconfig.md) — api-zod must include `"lib": ["es2022", "dom"]` or `File` type from upload schema breaks tsc --build.
 - [Generated hook query options](generated-hook-query-key.md) — Orval-generated hooks require `queryKey` in query options even when using `enabled`; always pass the matching `getGet*QueryKey()` helper.

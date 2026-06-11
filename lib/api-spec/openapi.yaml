@@ -271,7 +271,7 @@ paths:
                 $ref: "#/components/schemas/Stats"
 
   /github/oauth/start:
-    get:
+    post:
       operationId: startGitHubOAuth
       tags: [github]
       summary: Get the GitHub OAuth authorization URL

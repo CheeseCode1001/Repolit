@@ -197,6 +197,42 @@ export const GetStatsResponse = zod.object({
 });
 
 /**
+ * @summary Get the GitHub OAuth authorization URL
+ */
+export const StartGitHubOAuthResponse = zod.object({
+  url: zod.string(),
+});
+
+/**
+ * @summary List the authenticated user's GitHub repositories
+ */
+export const GetGitHubReposQueryParams = zod.object({
+  q: zod.coerce.string().optional(),
+  page: zod.coerce.number().optional(),
+  per_page: zod.coerce.number().optional(),
+});
+
+export const GetGitHubReposResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  fullName: zod.string(),
+  description: zod.string().nullish(),
+  htmlUrl: zod.string(),
+  private: zod.boolean(),
+  language: zod.string().nullish(),
+  stargazersCount: zod.number(),
+  updatedAt: zod.string(),
+});
+export const GetGitHubReposResponse = zod.array(GetGitHubReposResponseItem);
+
+/**
+ * @summary Disconnect GitHub integration
+ */
+export const DisconnectGitHubResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary Get the current user's profile
  */
 export const GetProfileResponse = zod.object({
@@ -208,6 +244,7 @@ export const GetProfileResponse = zod.object({
   avatarConfig: zod.string().nullish(),
   points: zod.number(),
   extraScansUnlocked: zod.number(),
+  githubUsername: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -231,6 +268,7 @@ export const UpdateProfileResponse = zod.object({
   avatarConfig: zod.string().nullish(),
   points: zod.number(),
   extraScansUnlocked: zod.number(),
+  githubUsername: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
