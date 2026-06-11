@@ -10,22 +10,36 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Star, Github, Save, User } from "lucide-react";
-import ReactNiceAvatar, { genConfig } from "react-nice-avatar";
-import type { AvatarConfig } from "react-nice-avatar";
+import Avatar from "boring-avatars";
 
-type AvatarStyleOption = {
-  label: string;
-  config: Partial<AvatarConfig>;
-};
-
-const AVATAR_STYLE_OPTIONS: AvatarStyleOption[] = [
-  { label: "Random 1", config: genConfig() },
-  { label: "Random 2", config: genConfig() },
-  { label: "Random 3", config: genConfig() },
-  { label: "Random 4", config: genConfig() },
-  { label: "Random 5", config: genConfig() },
-  { label: "Random 6", config: genConfig() },
+// Preset seeds for avatar picker
+const AVATAR_SEEDS = [
+  "alpha-forge",
+  "beta-stream",
+  "gamma-node",
+  "delta-core",
+  "epsilon-arc",
+  "zeta-pulse",
+  "eta-flux",
+  "theta-wave",
+  "iota-mesh",
+  "kappa-grid",
+  "lambda-stack",
+  "mu-circuit",
 ];
+
+const AVATAR_COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#fb923c", "#a78bfa", "#fbbf24"];
+
+function BoringAvatar({ seed, size = 64 }: { seed: string; size?: number }) {
+  return (
+    <Avatar
+      size={size}
+      name={seed}
+      variant="beam"
+      colors={AVATAR_COLORS}
+    />
+  );
+}
 
 export function ProfilePage() {
   const [, setLocation] = useLocation();
@@ -42,46 +56,51 @@ export function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
-  const [selectedAvatarConfig, setSelectedAvatarConfig] = useState<Partial<AvatarConfig> | null>(null);
-  const [avatarOptions, setAvatarOptions] = useState<AvatarStyleOption[]>(AVATAR_STYLE_OPTIONS);
+  const [selectedSeed, setSelectedSeed] = useState<string>("");
+  const [visibleSeeds, setVisibleSeeds] = useState<string[]>(AVATAR_SEEDS.slice(0, 6));
 
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.displayName ?? user?.fullName ?? "");
       setUsername(profile.username ?? user?.username ?? "");
       setBio(profile.bio ?? "");
-      if (profile.avatarConfig) {
-        try {
-          setSelectedAvatarConfig(JSON.parse(profile.avatarConfig));
-        } catch { /* ignore */ }
-      }
+      // avatarConfig is now the seed string directly
+      setSelectedSeed(profile.avatarConfig ?? user?.id ?? "default");
     }
   }, [profile, user]);
 
-  const regenerateAvatars = () => {
-    setAvatarOptions([
-      { label: "Option 1", config: genConfig() },
-      { label: "Option 2", config: genConfig() },
-      { label: "Option 3", config: genConfig() },
-      { label: "Option 4", config: genConfig() },
-      { label: "Option 5", config: genConfig() },
-      { label: "Option 6", config: genConfig() },
-    ]);
+  const shuffleSeeds = () => {
+    const all = AVATAR_SEEDS;
+    // Generate 6 random seeds from the list plus some user-based combos
+    const extra = [
+      `${displayName || "user"}-1`,
+      `${displayName || "user"}-2`,
+      `${username || "member"}-alpha`,
+      `${username || "member"}-beta`,
+      "dark-matter",
+      "void-stream",
+      "neon-circuit",
+      "byte-forge",
+    ];
+    const pool = [...all, ...extra];
+    const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, 6);
+    setVisibleSeeds(shuffled);
   };
 
   const handleSave = async () => {
     try {
       await updateProfile.mutateAsync({
         data: {
-          displayName,
-          username,
-          bio,
-          avatarConfig: selectedAvatarConfig ? JSON.stringify(selectedAvatarConfig) : undefined,
+          displayName: displayName || undefined,
+          username: username || undefined,
+          bio: bio || undefined,
+          avatarConfig: selectedSeed || undefined,
         },
       });
       toast({ title: "Profile saved", description: "Your profile has been updated." });
     } catch (err: any) {
-      toast({ title: "Failed to save profile", description: err.message, variant: "destructive" });
+      const msg = err?.data?.error ?? err.message ?? "Unknown error";
+      toast({ title: "Failed to save profile", description: msg, variant: "destructive" });
     }
   };
 
@@ -102,8 +121,8 @@ export function ProfilePage() {
     );
   }
 
-  const currentAvatar = selectedAvatarConfig;
   const points = profile?.points ?? 0;
+  const currentSeed = selectedSeed || user.id;
 
   return (
     <div className="container max-w-screen-xl py-6 sm:py-8 space-y-6">
@@ -131,30 +150,29 @@ export function ProfilePage() {
             <CardTitle className="font-mono text-sm text-muted-foreground">AVATAR</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-center">
-              {currentAvatar ? (
-                <ReactNiceAvatar style={{ width: 96, height: 96 }} {...currentAvatar} />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border border-border">
-                  <User className="w-10 h-10 text-muted-foreground" />
-                </div>
-              )}
+            {/* Current avatar preview */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="rounded-full overflow-hidden border-2 border-primary/30 p-0.5">
+                <BoringAvatar seed={currentSeed} size={88} />
+              </div>
+              <span className="text-xs font-mono text-muted-foreground">Your avatar</span>
             </div>
 
-            <p className="text-xs font-mono text-muted-foreground text-center">Pick an avatar style:</p>
+            <p className="text-xs font-mono text-muted-foreground text-center">Pick a style:</p>
 
+            {/* Preset picker */}
             <div className="grid grid-cols-3 gap-2">
-              {avatarOptions.map((opt, i) => (
+              {visibleSeeds.map((seed, i) => (
                 <button
                   key={i}
-                  onClick={() => setSelectedAvatarConfig(opt.config)}
-                  className={`p-1 rounded border-2 transition-colors flex justify-center items-center ${
-                    JSON.stringify(selectedAvatarConfig) === JSON.stringify(opt.config)
-                      ? "border-primary bg-primary/10"
-                      : "border-border/40 hover:border-border"
+                  onClick={() => setSelectedSeed(seed)}
+                  className={`p-1.5 rounded border-2 transition-all flex justify-center items-center ${
+                    selectedSeed === seed
+                      ? "border-primary bg-primary/10 scale-105"
+                      : "border-border/40 hover:border-border/80"
                   }`}
                 >
-                  <ReactNiceAvatar style={{ width: 48, height: 48 }} {...opt.config} />
+                  <BoringAvatar seed={seed} size={48} />
                 </button>
               ))}
             </div>
@@ -163,7 +181,7 @@ export function ProfilePage() {
               variant="outline"
               size="sm"
               className="w-full font-mono text-xs"
-              onClick={regenerateAvatars}
+              onClick={shuffleSeeds}
             >
               SHUFFLE OPTIONS
             </Button>
@@ -240,7 +258,7 @@ export function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Points & Connections */}
+        {/* Points & Tier */}
         <Card className="border-border/60">
           <CardHeader className="pb-3">
             <CardTitle className="font-mono text-sm text-muted-foreground">POINTS & TIER</CardTitle>

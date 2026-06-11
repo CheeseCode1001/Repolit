@@ -383,6 +383,17 @@ export function RepoDashboard() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
+            {(repo.status === "done" || repo.status === "error") && !isAnalyzing && (
+              <Button
+                onClick={startAnalysis}
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs"
+                disabled={isAnalyzing}
+              >
+                <RefreshCw className="w-3 h-3 mr-1.5" /> RE-ANALYZE
+              </Button>
+            )}
             {repo.status === "done" && (
               <Button
                 onClick={handleShare}
@@ -396,16 +407,6 @@ export function RepoDashboard() {
                 ) : (
                   <><Share2 className="w-3 h-3 mr-1.5" /> SHARE</>
                 )}
-              </Button>
-            )}
-            {repo.status === "error" && !isAnalyzing && (
-              <Button
-                onClick={startAnalysis}
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs"
-              >
-                <RefreshCw className="w-3 h-3 mr-1.5" /> RETRY
               </Button>
             )}
             <AlertDialog>

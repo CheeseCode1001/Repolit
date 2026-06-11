@@ -49,7 +49,7 @@ function parseGitHubUrl(url: string): { owner: string; name: string } | null {
 async function fetchGitHubRepoMeta(owner: string, name: string) {
   try {
     const res = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
-      headers: { Accept: "application/vnd.github+json" },
+      headers: githubHeaders(),
     });
     if (!res.ok) return null;
     const data = await res.json() as {
@@ -71,7 +71,7 @@ async function fetchRepoTree(owner: string, name: string): Promise<string> {
   try {
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/git/trees/HEAD?recursive=1`,
-      { headers: { Accept: "application/vnd.github+json" } }
+      { headers: githubHeaders() }
     );
     if (!res.ok) return "";
     const data = await res.json() as { tree?: { path?: string; type?: string }[] };
@@ -89,7 +89,7 @@ async function fetchFileContent(owner: string, name: string, path: string): Prom
   try {
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/contents/${path}`,
-      { headers: { Accept: "application/vnd.github+json" } }
+      { headers: githubHeaders() }
     );
     if (!res.ok) return "";
     const data = await res.json() as { content?: string; encoding?: string };
@@ -102,19 +102,29 @@ async function fetchFileContent(owner: string, name: string, path: string): Prom
   }
 }
 
+function githubHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
+  const token = process.env.GITHUB_TOKEN;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
 async function fetchCommitHistory(owner: string, name: string): Promise<string> {
   try {
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/commits?per_page=30`,
-      { headers: { Accept: "application/vnd.github+json" } }
+      { headers: githubHeaders() }
     );
-    if (!res.ok) return "[]";
+    if (!res.ok) {
+      return "[]";
+    }
     const data = await res.json() as Array<{
       sha: string;
       commit: { message: string; author: { name: string; date: string } };
       author?: { login: string; avatar_url: string } | null;
       html_url: string;
     }>;
+    if (!Array.isArray(data)) return "[]";
     const commits = data.map((c) => ({
       sha: c.sha?.slice(0, 7) ?? "",
       message: c.commit?.message?.split("\n")[0] ?? "",

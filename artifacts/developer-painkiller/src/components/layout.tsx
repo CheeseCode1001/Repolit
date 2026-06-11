@@ -4,9 +4,10 @@ import { Show, useUser, useClerk } from "@clerk/react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, User } from "lucide-react";
 import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
-import ReactNiceAvatar from "react-nice-avatar";
+import Avatar from "boring-avatars";
 
 const logoIcon = "/logo-icon.png";
+const AVATAR_COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#fb923c", "#a78bfa", "#fbbf24"];
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -31,10 +32,8 @@ function ProfileButton() {
     query: { enabled: !!user, queryKey: getGetProfileQueryKey() },
   });
 
-  let avatarConfig: object | null = null;
-  if (profile?.avatarConfig) {
-    try { avatarConfig = JSON.parse(profile.avatarConfig); } catch { /* ignore */ }
-  }
+  // avatarConfig is now the seed string for boring-avatars
+  const seed = profile?.avatarConfig ?? user?.id ?? "default";
 
   return (
     <button
@@ -43,8 +42,13 @@ function ProfileButton() {
       className="h-7 w-7 flex items-center justify-center border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors overflow-hidden"
       title="Your Profile"
     >
-      {avatarConfig ? (
-        <ReactNiceAvatar style={{ width: 28, height: 28 }} {...avatarConfig} />
+      {user ? (
+        <Avatar
+          size={28}
+          name={seed}
+          variant="beam"
+          colors={AVATAR_COLORS}
+        />
       ) : (
         <User className="w-3.5 h-3.5" />
       )}
