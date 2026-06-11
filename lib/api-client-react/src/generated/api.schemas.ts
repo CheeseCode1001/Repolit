@@ -37,6 +37,8 @@ export interface Analysis {
   security?: string | null;
   /** JSON array of start-here file recommendations */
   startHere?: string | null;
+  /** JSON array of recent commits */
+  commitHistory?: string | null;
   createdAt: string;
 }
 
@@ -55,8 +57,42 @@ export interface Stats {
   totalAnalyses: number;
   languageCounts: StatsLanguageCounts;
   recentRepos: Repo[];
+  points: number;
 }
 
 export interface ApiError {
   error: string;
 }
+
+export interface ShareTokenResponse {
+  shareToken: string;
+}
+
+export interface SharedAnalysisResponse {
+  repo: Repo;
+  analysis?: Analysis | null;
+}
+
+export interface UserProfile {
+  userId: string;
+  isAnon: boolean;
+  displayName?: string | null;
+  username?: string | null;
+  bio?: string | null;
+  avatarConfig?: string | null;
+  points: number;
+  extraScansUnlocked: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateProfileBody {
+  displayName?: string;
+  username?: string;
+  bio?: string;
+  avatarConfig?: string;
+}
+
+export type UploadRepoBody = {
+  file?: Blob;
+};

@@ -1,19 +1,32 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { reposTable, analysesTable } from "@workspace/db";
+import { reposTable, analysesTable, userProfilesTable } from "@workspace/db";
 import { eq, desc, count, sql, and } from "drizzle-orm";
 import { ai } from "@workspace/integrations-gemini-ai";
 import { getAuth } from "@clerk/express";
 import { z } from "zod";
+import multer from "multer";
+import {
+  resolveUserId,
+  requireClerkAuth,
+  isAnonUserId,
+  ensureUserProfile,
+  ANON_REPO_LIMIT,
+  FREE_REPO_LIMIT,
+  POINTS_PER_SCAN,
+  POINTS_COST_EXTRA_SCAN,
+} from "../middlewares/resolveUser";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const CreateRepoBody = z.object({ url: z.string().url() });
 const IdParam = z.object({ id: z.coerce.number() });
 const ChatBody = z.object({ question: z.string().min(1).max(2000) });
 
+// Require any user (Clerk or anon). Returns userId or null.
 function requireAuth(req: any, res: any): string | null {
-  const { userId } = getAuth(req);
+  const userId = resolveUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Authentication required" });
     return null;
@@ -89,6 +102,82 @@ async function fetchFileContent(owner: string, name: string, path: string): Prom
   }
 }
 
+async function fetchCommitHistory(owner: string, name: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/commits?per_page=30`,
+      { headers: { Accept: "application/vnd.github+json" } }
+    );
+    if (!res.ok) return "[]";
+    const data = await res.json() as Array<{
+      sha: string;
+      commit: { message: string; author: { name: string; date: string } };
+      author?: { login: string; avatar_url: string } | null;
+      html_url: string;
+    }>;
+    const commits = data.map((c) => ({
+      sha: c.sha?.slice(0, 7) ?? "",
+      message: c.commit?.message?.split("\n")[0] ?? "",
+      author: c.commit?.author?.name ?? "",
+      login: c.author?.login ?? null,
+      avatar: c.author?.avatar_url ?? null,
+      date: c.commit?.author?.date ?? "",
+      url: c.html_url ?? "",
+    }));
+    return JSON.stringify(commits);
+  } catch {
+    return "[]";
+  }
+}
+
+/**
+ * Check if a user can create a new repo scan.
+ * Returns null if allowed, or an error message if blocked.
+ */
+async function checkScanLimit(userId: string): Promise<string | null> {
+  const isAnon = isAnonUserId(userId);
+  const limit = isAnon ? ANON_REPO_LIMIT : FREE_REPO_LIMIT;
+
+  const [result] = await db
+    .select({ cnt: count() })
+    .from(reposTable)
+    .where(eq(reposTable.userId, userId));
+
+  const currentCount = Number(result.cnt);
+
+  if (currentCount < limit) return null; // under limit, allowed
+
+  if (isAnon) {
+    return `Anonymous users can only analyze ${ANON_REPO_LIMIT} repository. Sign in to analyze more.`;
+  }
+
+  // Check if user has points for extra scans
+  const [profile] = await db
+    .select({ points: userProfilesTable.points, extraScansUnlocked: userProfilesTable.extraScansUnlocked })
+    .from(userProfilesTable)
+    .where(eq(userProfilesTable.userId, userId))
+    .limit(1);
+
+  const totalAllowed = FREE_REPO_LIMIT + (profile?.extraScansUnlocked ?? 0);
+  if (currentCount < totalAllowed) return null;
+
+  const pts = profile?.points ?? 0;
+  if (pts >= POINTS_COST_EXTRA_SCAN) {
+    // Deduct points and unlock one extra scan
+    await db
+      .update(userProfilesTable)
+      .set({
+        points: pts - POINTS_COST_EXTRA_SCAN,
+        extraScansUnlocked: (profile?.extraScansUnlocked ?? 0) + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(userProfilesTable.userId, userId));
+    return null; // unlocked with points
+  }
+
+  return `Free tier allows ${FREE_REPO_LIMIT} repositories. Earn ${POINTS_COST_EXTRA_SCAN} points to unlock more (you have ${pts} pts).`;
+}
+
 // GET /api/repos — returns only the current user's repos
 router.get("/repos", async (req, res) => {
   const userId = requireAuth(req, res);
@@ -135,6 +224,13 @@ router.post("/repos", async (req, res) => {
       return;
     }
 
+    // Check scan limits
+    const limitError = await checkScanLimit(userId);
+    if (limitError) {
+      res.status(403).json({ error: limitError });
+      return;
+    }
+
     const meta = await fetchGitHubRepoMeta(owner, name);
     const [repo] = await db.insert(reposTable).values({
       userId,
@@ -146,6 +242,11 @@ router.post("/repos", async (req, res) => {
       stars: meta?.stars ?? null,
       status: "pending",
     }).returning();
+
+    // Ensure profile exists for points tracking
+    if (!isAnonUserId(userId)) {
+      await ensureUserProfile(userId);
+    }
 
     res.status(201).json(repo);
   } catch (err) {
@@ -267,10 +368,7 @@ ${fileContents.join("\n\n")}`;
 
     const summaryPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `You are a senior software architect explaining a codebase to a mid-level developer.
+      contents: [{ role: "user", parts: [{ text: `You are a senior software architect explaining a codebase to a mid-level developer.
 
 Analyze this GitHub repository and provide a clear, opinionated explanation covering:
 1. What this project does and why it exists
@@ -282,9 +380,7 @@ Analyze this GitHub repository and provide a clear, opinionated explanation cove
 
 Be specific to this codebase. Avoid generic boilerplate. Write like you're onboarding a teammate, not documenting for a README.
 
-${context}`
-        }]
-      }],
+${context}` }] }],
       config: { maxOutputTokens: 8192 },
     });
 
@@ -292,10 +388,7 @@ ${context}`
 
     const architecturePromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `You are a software architect. Generate a Mermaid.js diagram showing the architecture or data flow of this repository.
+      contents: [{ role: "user", parts: [{ text: `You are a software architect. Generate a Mermaid.js diagram showing the architecture or data flow of this repository.
 
 STRICT RULES for the Mermaid syntax:
 - Output ONLY valid Mermaid syntax. Start with graph TD or flowchart TD or sequenceDiagram.
@@ -311,9 +404,7 @@ graph TD
     API_Server --> Auth_Middleware
     Auth_Middleware --> DB
 
-${context}`
-        }]
-      }],
+${context}` }] }],
       config: { maxOutputTokens: 4096 },
     });
 
@@ -321,10 +412,7 @@ ${context}`
 
     const onboardingPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `You are a senior developer advocate writing an onboarding guide for a new contributor to this repository.
+      contents: [{ role: "user", parts: [{ text: `You are a senior developer advocate writing an onboarding guide for a new contributor to this repository.
 
 Write a comprehensive but practical guide covering:
 1. Prerequisites and what you need to know before starting
@@ -337,9 +425,7 @@ Write a comprehensive but practical guide covering:
 
 Use markdown with clear headers, code blocks, and bullet points. Be specific to this codebase — reference real file paths and real commands where possible.
 
-${context}`
-        }]
-      }],
+${context}` }] }],
       config: { maxOutputTokens: 8192 },
     });
 
@@ -347,10 +433,7 @@ ${context}`
 
     const securityPromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `You are a security engineer performing a code review. Analyze this repository for potential security issues.
+      contents: [{ role: "user", parts: [{ text: `You are a security engineer performing a code review. Analyze this repository for potential security issues.
 
 Look for:
 - Hardcoded secrets, tokens, or credentials
@@ -371,9 +454,7 @@ Return a JSON array of findings. Each finding must have:
 
 Return ONLY the JSON array, no markdown fences or extra text.
 
-${context}`
-        }]
-      }],
+${context}` }] }],
       config: { maxOutputTokens: 8192, responseMimeType: "application/json" },
     });
 
@@ -381,10 +462,7 @@ ${context}`
 
     const startHerePromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `You are a senior engineer mentoring a new developer who just joined the team.
+      contents: [{ role: "user", parts: [{ text: `You are a senior engineer mentoring a new developer who just joined the team.
 
 A new developer needs to understand this codebase quickly. Identify the 5-7 most important files or locations they should read FIRST — the ones that will give the greatest understanding with the least time investment.
 
@@ -400,14 +478,15 @@ Order by priority (most important first). Be specific to this actual codebase �
 
 Return ONLY the JSON array, no markdown fences or extra text.
 
-${context}`
-        }]
-      }],
+${context}` }] }],
       config: { maxOutputTokens: 4096, responseMimeType: "application/json" },
     });
 
-    const [summaryResult, archResult, onboardingResult, securityResult, startHereResult] = await Promise.all([
-      summaryPromise, architecturePromise, onboardingPromise, securityPromise, startHerePromise
+    send({ step: "Fetching commit history..." });
+    const commitHistoryPromise = fetchCommitHistory(repo.owner, repo.name);
+
+    const [summaryResult, archResult, onboardingResult, securityResult, startHereResult, commitHistory] = await Promise.all([
+      summaryPromise, architecturePromise, onboardingPromise, securityPromise, startHerePromise, commitHistoryPromise
     ]);
 
     const summary = summaryResult.text ?? "";
@@ -427,9 +506,22 @@ ${context}`
       onboarding,
       security,
       startHere,
+      commitHistory,
     }).returning();
 
     await db.update(reposTable).set({ status: "done", updatedAt: new Date() }).where(eq(reposTable.id, repo.id));
+
+    // Award points for authenticated (non-anon) users
+    if (!isAnonUserId(userId)) {
+      await ensureUserProfile(userId);
+      await db
+        .update(userProfilesTable)
+        .set({
+          points: sql`${userProfilesTable.points} + ${POINTS_PER_SCAN}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(userProfilesTable.userId, userId));
+    }
 
     send({ step: "done", analysis });
     res.end();
@@ -452,7 +544,6 @@ router.get("/repos/:id/analysis", async (req, res) => {
     return;
   }
   try {
-    // Verify ownership first
     const [repo] = await db.select({ id: reposTable.id }).from(reposTable)
       .where(and(eq(reposTable.id, parsed.data.id), eq(reposTable.userId, userId)));
     if (!repo) {
@@ -516,10 +607,7 @@ ${analysis?.onboarding ? `ONBOARDING GUIDE:\n${analysis.onboarding}\n` : ""}`;
 
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `You are a senior engineer who deeply knows the ${repo.owner}/${repo.name} codebase. A developer is asking you a question about it.
+      contents: [{ role: "user", parts: [{ text: `You are a senior engineer who deeply knows the ${repo.owner}/${repo.name} codebase. A developer is asking you a question about it.
 
 Answer as if you are that senior engineer — be specific, reference real file paths and module names where relevant, explain WHY things work the way they do, and include any tradeoffs or gotchas worth knowing.
 
@@ -530,9 +618,7 @@ ${context}
 
 DEVELOPER QUESTION: ${question}
 
-Answer concisely but completely. Use markdown formatting with code blocks and bullet points where helpful.`
-        }]
-      }],
+Answer concisely but completely. Use markdown formatting with code blocks and bullet points where helpful.` }] }],
       config: { maxOutputTokens: 4096 },
     });
 
@@ -543,14 +629,159 @@ Answer concisely but completely. Use markdown formatting with code blocks and bu
   }
 });
 
+// POST /api/repos/upload — analyze a zip or folder upload
+router.post("/repos/upload", upload.single("file"), async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  if (!req.file) {
+    res.status(400).json({ error: "No file uploaded" });
+    return;
+  }
+
+  // Check scan limits
+  const limitError = await checkScanLimit(userId);
+  if (limitError) {
+    res.status(403).json({ error: limitError });
+    return;
+  }
+
+  const fileName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const repoName = fileName.replace(/\.(zip|tar\.gz|tgz)$/, "").slice(0, 50) || "uploaded-project";
+
+  try {
+    let fileTree = "";
+    let fileContents = "";
+
+    if (req.file.mimetype === "application/zip" || fileName.endsWith(".zip")) {
+      // Use JSZip to extract the zip
+      const JSZip = (await import("jszip")).default;
+      const zip = await JSZip.loadAsync(req.file.buffer);
+      const entries: string[] = [];
+      const contentParts: string[] = [];
+
+      zip.forEach((relativePath, file) => {
+        if (!file.dir) entries.push(relativePath);
+      });
+
+      fileTree = entries.slice(0, 300).join("\n");
+
+      // Read key files
+      const keyEntries = entries.filter(f =>
+        /README|package\.json|requirements|setup\.py|Cargo\.toml|go\.mod|Makefile|tsconfig|main\.(ts|js|py|go|rs)|app\.(ts|js|tsx)|index\.(ts|js)/i.test(f)
+      ).slice(0, 8);
+
+      for (const entry of keyEntries) {
+        try {
+          const content = await zip.file(entry)?.async("string");
+          if (content) contentParts.push(`=== ${entry} ===\n${content.slice(0, 8000)}`);
+        } catch { /* skip */ }
+      }
+
+      fileContents = contentParts.join("\n\n");
+    } else {
+      // Plain text / other formats — treat as single file
+      fileTree = fileName;
+      fileContents = `=== ${fileName} ===\n${req.file.buffer.toString("utf8").slice(0, 16000)}`;
+    }
+
+    const [repo] = await db.insert(reposTable).values({
+      userId,
+      url: `local://${repoName}`,
+      name: repoName,
+      owner: "local",
+      description: `Uploaded from ${fileName}`,
+      language: null,
+      stars: null,
+      status: "analyzing",
+    }).returning();
+
+    if (!isAnonUserId(userId)) {
+      await ensureUserProfile(userId);
+    }
+
+    res.status(201).json(repo);
+
+    // Run analysis in background (fire-and-forget after response is sent)
+    setImmediate(async () => {
+      try {
+        const context = `Uploaded project: ${repoName}
+Source: ${fileName}
+
+File tree:
+${fileTree}
+
+Key file contents:
+${fileContents}`;
+
+        const [summaryResult, archResult, onboardingResult, securityResult, startHereResult] = await Promise.all([
+          ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: `You are a senior software architect. Analyze this uploaded codebase and explain it as you would to a mid-level developer joining the team. Cover what it does, the tech stack, key components, data flow, and design decisions.\n\n${context}` }] }],
+            config: { maxOutputTokens: 8192 },
+          }),
+          ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: `Generate a Mermaid.js architecture diagram for this codebase. Start with graph TD. Use simple alphanumeric IDs. No markdown fences.\n\n${context}` }] }],
+            config: { maxOutputTokens: 4096 },
+          }),
+          ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: `Write an onboarding guide for a new contributor to this codebase. Include setup steps, folder structure, how to run it, and common gotchas. Use markdown.\n\n${context}` }] }],
+            config: { maxOutputTokens: 8192 },
+          }),
+          ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: `Perform a security review of this codebase. Return a JSON array of findings with fields: severity, title, description, recommendation. Return ONLY the JSON array.\n\n${context}` }] }],
+            config: { maxOutputTokens: 4096, responseMimeType: "application/json" },
+          }),
+          ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: `Identify 5-7 priority files to read first. Return a JSON array with fields: file, title, why, insight. Return ONLY the JSON array.\n\n${context}` }] }],
+            config: { maxOutputTokens: 4096, responseMimeType: "application/json" },
+          }),
+        ]);
+
+        await db.insert(analysesTable).values({
+          repoId: repo.id,
+          summary: summaryResult.text ?? "",
+          architecture: archResult.text ?? "",
+          onboarding: onboardingResult.text ?? "",
+          security: securityResult.text ?? "",
+          startHere: startHereResult.text ?? "",
+          commitHistory: "[]",
+        });
+
+        await db.update(reposTable)
+          .set({ status: "done", updatedAt: new Date() })
+          .where(eq(reposTable.id, repo.id));
+
+        // Award points for authenticated users
+        if (!isAnonUserId(userId)) {
+          await db
+            .update(userProfilesTable)
+            .set({ points: sql`${userProfilesTable.points} + ${POINTS_PER_SCAN}`, updatedAt: new Date() })
+            .where(eq(userProfilesTable.userId, userId));
+        }
+      } catch (err) {
+        await db.update(reposTable)
+          .set({ status: "error", updatedAt: new Date() })
+          .where(eq(reposTable.id, repo.id));
+      }
+    });
+  } catch (err) {
+    req.log.error({ err }, "Upload analysis failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /api/stats — filtered by current user if authenticated
 router.get("/stats", async (req, res) => {
   try {
-    const { userId } = getAuth(req);
+    const userId = resolveUserId(req);
 
     if (!userId) {
-      // Return zeroed stats for unauthenticated users
-      res.json({ totalRepos: 0, totalAnalyses: 0, languageCounts: {}, recentRepos: [] });
+      res.json({ totalRepos: 0, totalAnalyses: 0, languageCounts: {}, recentRepos: [], points: 0 });
       return;
     }
 
@@ -561,7 +792,6 @@ router.get("/stats", async (req, res) => {
       .orderBy(desc(reposTable.createdAt))
       .limit(5);
 
-    // Count analyses for user's repos
     const userRepoIds = recentRepos.map(r => r.id);
     let totalAnalysesCount = 0;
     if (userRepoIds.length > 0) {
@@ -582,11 +812,23 @@ router.get("/stats", async (req, res) => {
       if (row.language) languageCounts[row.language] = Number(row.cnt);
     }
 
+    // Get points for authenticated users
+    let points = 0;
+    if (!isAnonUserId(userId)) {
+      const [profile] = await db
+        .select({ points: userProfilesTable.points })
+        .from(userProfilesTable)
+        .where(eq(userProfilesTable.userId, userId))
+        .limit(1);
+      points = profile?.points ?? 0;
+    }
+
     res.json({
       totalRepos: Number(totalReposResult.count),
       totalAnalyses: totalAnalysesCount,
       languageCounts,
       recentRepos,
+      points,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get stats");

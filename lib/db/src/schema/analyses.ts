@@ -11,6 +11,7 @@ export const analysesTable = pgTable("analyses", {
   onboarding: text("onboarding"),
   security: text("security"),
   startHere: text("start_here"),
+  commitHistory: text("commit_history"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

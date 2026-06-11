@@ -2,7 +2,10 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Show, useUser, useClerk } from "@clerk/react";
 import { useTheme } from "next-themes";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, User } from "lucide-react";
+import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
+import ReactNiceAvatar from "react-nice-avatar";
+
 const logoIcon = "/logo-icon.png";
 
 function ThemeToggle() {
@@ -20,6 +23,35 @@ function ThemeToggle() {
   );
 }
 
+function ProfileButton() {
+  const { user } = useUser();
+  const [, setLocation] = useLocation();
+
+  const { data: profile } = useGetProfile({
+    query: { enabled: !!user, queryKey: getGetProfileQueryKey() },
+  });
+
+  let avatarConfig: object | null = null;
+  if (profile?.avatarConfig) {
+    try { avatarConfig = JSON.parse(profile.avatarConfig); } catch { /* ignore */ }
+  }
+
+  return (
+    <button
+      onClick={() => setLocation("/profile")}
+      aria-label="Profile"
+      className="h-7 w-7 flex items-center justify-center border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:border-border transition-colors overflow-hidden"
+      title="Your Profile"
+    >
+      {avatarConfig ? (
+        <ReactNiceAvatar style={{ width: 28, height: 28 }} {...avatarConfig} />
+      ) : (
+        <User className="w-3.5 h-3.5" />
+      )}
+    </button>
+  );
+}
+
 function UserNav() {
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -27,6 +59,7 @@ function UserNav() {
 
   return (
     <div className="flex items-center gap-2">
+      <ProfileButton />
       <span className="text-xs font-mono text-muted-foreground hidden sm:inline truncate max-w-[120px]">
         {user?.primaryEmailAddress?.emailAddress ?? user?.username ?? ""}
       </span>

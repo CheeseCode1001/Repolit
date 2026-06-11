@@ -14,6 +14,10 @@ tags:
     description: Repository analysis operations
   - name: analyses
     description: Analysis results operations
+  - name: profile
+    description: User profile operations
+  - name: sharing
+    description: Repo sharing operations
 paths:
   /healthz:
     get:
@@ -53,6 +57,29 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateRepoBody"
+      responses:
+        "201":
+          description: Repo created and analysis queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repo"
+
+  /repos/upload:
+    post:
+      operationId: uploadRepo
+      tags: [repos]
+      summary: Upload a zip or folder for analysis
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
       responses:
         "201":
           description: Repo created and analysis queued
@@ -178,6 +205,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /repos/{id}/share:
+    post:
+      operationId: shareRepo
+      tags: [sharing]
+      summary: Generate or retrieve a public share token for a repo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Share token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareTokenResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /shared/{token}:
+    get:
+      operationId: getSharedAnalysis
+      tags: [sharing]
+      summary: Get a publicly shared repo analysis by token (no auth required)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Shared repo and analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedAnalysisResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /stats:
     get:
       operationId: getStats
@@ -190,6 +267,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Stats"
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get the current user's profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    put:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Update the current user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
 
 components:
   schemas:
@@ -271,6 +378,10 @@ components:
           type: string
           nullable: true
           description: JSON array of start-here file recommendations
+        commitHistory:
+          type: string
+          nullable: true
+          description: JSON array of recent commits
         createdAt:
           type: string
           format: date-time
@@ -310,11 +421,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Repo"
+        points:
+          type: integer
       required:
         - totalRepos
         - totalAnalyses
         - languageCounts
         - recentRepos
+        - points
 
     ApiError:
       type: object
@@ -323,3 +437,71 @@ components:
           type: string
       required:
         - error
+
+    ShareTokenResponse:
+      type: object
+      properties:
+        shareToken:
+          type: string
+      required:
+        - shareToken
+
+    SharedAnalysisResponse:
+      type: object
+      properties:
+        repo:
+          $ref: "#/components/schemas/Repo"
+        analysis:
+          $ref: "#/components/schemas/Analysis"
+          nullable: true
+      required:
+        - repo
+
+    UserProfile:
+      type: object
+      properties:
+        userId:
+          type: string
+        isAnon:
+          type: boolean
+        displayName:
+          type: string
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        avatarConfig:
+          type: string
+          nullable: true
+        points:
+          type: integer
+        extraScansUnlocked:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - isAnon
+        - points
+        - extraScansUnlocked
+        - createdAt
+        - updatedAt
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+        username:
+          type: string
+        bio:
+          type: string
+        avatarConfig:
+          type: string

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { Search, GitBranch, Github, Code, Terminal, Clock, Star, Lock } from "lucide-react";
-import { useListRepos, useGetStats, useCreateRepo, getListReposQueryKey } from "@workspace/api-client-react";
+import { Search, GitBranch, Github, Code, Terminal, Clock, Star, Upload, FolderOpen, Users } from "lucide-react";
+import { useListRepos, useGetStats, useCreateRepo, useUploadRepo, getListReposQueryKey } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,26 +15,19 @@ export function Home() {
   const { toast } = useToast();
   const [url, setUrl] = useState("");
   const { isSignedIn, isLoaded } = useUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: stats, isLoading: statsLoading } = useGetStats();
   const { data: repos, isLoading: reposLoading } = useListRepos({
-    query: { enabled: isSignedIn === true, queryKey: getListReposQueryKey() },
+    query: { queryKey: getListReposQueryKey() },
   });
 
   const createRepo = useCreateRepo();
+  const uploadRepo = useUploadRepo();
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
-
-    if (!isSignedIn) {
-      toast({
-        title: "Sign in required",
-        description: "Please sign in to analyze repositories and save your data.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (!url.includes("github.com")) {
       toast({
@@ -49,12 +42,43 @@ export function Home() {
       const repo = await createRepo.mutateAsync({ data: { url } });
       setLocation(`/repo/${repo.id}`);
     } catch (err: any) {
+      const msg = err?.data?.error ?? err.message ?? "Failed to submit repository.";
       toast({
         title: "Error starting analysis",
-        description: err.message || "Failed to submit repository.",
+        description: msg,
         variant: "destructive",
       });
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".zip")) {
+      toast({
+        title: "Unsupported format",
+        description: "Please upload a .zip file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const repo = await uploadRepo.mutateAsync({ data: formData as any });
+      setLocation(`/repo/${repo.id}`);
+    } catch (err: any) {
+      const msg = err?.data?.error ?? err.message ?? "Failed to upload file.";
+      toast({
+        title: "Upload failed",
+        description: msg,
+        variant: "destructive",
+      });
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -96,19 +120,42 @@ export function Home() {
             type="submit"
             size="lg"
             className="h-11 sm:h-12 font-mono font-bold tracking-wider shrink-0 rounded-none"
-            disabled={createRepo.isPending || !isLoaded}
+            disabled={createRepo.isPending || uploadRepo.isPending}
           >
-            {createRepo.isPending ? (
-              "SCANNING..."
-            ) : !isSignedIn && isLoaded ? (
-              <span className="flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5" /> SIGN IN TO SCAN
-              </span>
-            ) : (
-              "SCAN REPO"
-            )}
+            {createRepo.isPending ? "SCANNING..." : "SCAN REPO"}
           </Button>
         </form>
+
+        {/* Alternative input options */}
+        <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-xl">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".zip"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-xs rounded-none border-border/50 text-muted-foreground hover:text-foreground gap-1.5"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadRepo.isPending}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            {uploadRepo.isPending ? "UPLOADING..." : "UPLOAD ZIP"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-xs rounded-none border-border/50 text-muted-foreground hover:text-foreground gap-1.5"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadRepo.isPending}
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            OPEN ZIP FOLDER
+          </Button>
+        </div>
 
         {isLoaded && !isSignedIn && (
           <p className="text-xs font-mono text-muted-foreground/70">
@@ -125,7 +172,17 @@ export function Home() {
             >
               create an account
             </button>{" "}
-            to save and manage your repo analyses.
+            to save analyses and earn points. Anonymous users can scan 1 repo.
+          </p>
+        )}
+        {isLoaded && isSignedIn && (
+          <p className="text-xs font-mono text-muted-foreground/70">
+            <Users className="w-3 h-3 inline mr-1" />
+            Signed in — scan up to 2 repos free.{" "}
+            <span className="text-primary">Earn 10 pts per scan</span> to unlock more.
+            {stats && stats.points > 0 && (
+              <span className="ml-2 text-primary font-bold">{stats.points} pts available</span>
+            )}
           </p>
         )}
       </section>
@@ -206,37 +263,13 @@ export function Home() {
           <h2 className="text-lg sm:text-xl font-bold font-mono tracking-tight">My Repositories</h2>
         </div>
 
-        {!isSignedIn && isLoaded ? (
-          <div className="text-center py-14 border border-dashed border-border/50 rounded-lg">
-            <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-50" />
-            <p className="text-muted-foreground font-mono text-sm">
-              Sign in to see your repository analyses.
-            </p>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Button
-                size="sm"
-                className="font-mono text-xs"
-                onClick={() => setLocation("/sign-in")}
-              >
-                Sign In
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="font-mono text-xs"
-                onClick={() => setLocation("/sign-up")}
-              >
-                Create Account
-              </Button>
-            </div>
-          </div>
-        ) : reposLoading ? (
+        {reposLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-32 w-full rounded-lg" />
             ))}
           </div>
-        ) : repos?.length === 0 ? (
+        ) : !repos || repos.length === 0 ? (
           <div className="text-center py-14 border border-dashed border-border/50 rounded-lg">
             <Terminal className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-50" />
             <p className="text-muted-foreground font-mono text-sm">

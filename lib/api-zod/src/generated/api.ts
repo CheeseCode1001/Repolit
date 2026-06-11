@@ -40,6 +40,13 @@ export const CreateRepoBody = zod.object({
 });
 
 /**
+ * @summary Upload a zip or folder for analysis
+ */
+export const UploadRepoBody = zod.object({
+  file: zod.instanceof(File).optional(),
+});
+
+/**
  * @summary Get a repository by ID
  */
 export const GetRepoParams = zod.object({
@@ -91,6 +98,10 @@ export const GetRepoAnalysisResponse = zod.object({
     .string()
     .nullish()
     .describe("JSON array of start-here file recommendations"),
+  commitHistory: zod
+    .string()
+    .nullish()
+    .describe("JSON array of recent commits"),
   createdAt: zod.coerce.date(),
 });
 
@@ -107,6 +118,58 @@ export const ChatWithRepoBody = zod.object({
 
 export const ChatWithRepoResponse = zod.object({
   answer: zod.string(),
+});
+
+/**
+ * @summary Generate or retrieve a public share token for a repo
+ */
+export const ShareRepoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ShareRepoResponse = zod.object({
+  shareToken: zod.string(),
+});
+
+/**
+ * @summary Get a publicly shared repo analysis by token (no auth required)
+ */
+export const GetSharedAnalysisParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const GetSharedAnalysisResponse = zod.object({
+  repo: zod.object({
+    id: zod.number(),
+    url: zod.string(),
+    name: zod.string(),
+    owner: zod.string(),
+    description: zod.string().nullish(),
+    language: zod.string().nullish(),
+    stars: zod.number().nullish(),
+    status: zod.string().describe("pending | analyzing | done | error"),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  analysis: zod
+    .object({
+      id: zod.number(),
+      repoId: zod.number(),
+      summary: zod.string().nullish(),
+      architecture: zod.string().nullish().describe("Mermaid diagram syntax"),
+      onboarding: zod.string().nullish(),
+      security: zod.string().nullish(),
+      startHere: zod
+        .string()
+        .nullish()
+        .describe("JSON array of start-here file recommendations"),
+      commitHistory: zod
+        .string()
+        .nullish()
+        .describe("JSON array of recent commits"),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
 });
 
 /**
@@ -130,4 +193,44 @@ export const GetStatsResponse = zod.object({
       updatedAt: zod.coerce.date(),
     }),
   ),
+  points: zod.number(),
+});
+
+/**
+ * @summary Get the current user's profile
+ */
+export const GetProfileResponse = zod.object({
+  userId: zod.string(),
+  isAnon: zod.boolean(),
+  displayName: zod.string().nullish(),
+  username: zod.string().nullish(),
+  bio: zod.string().nullish(),
+  avatarConfig: zod.string().nullish(),
+  points: zod.number(),
+  extraScansUnlocked: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update the current user's profile
+ */
+export const UpdateProfileBody = zod.object({
+  displayName: zod.string().optional(),
+  username: zod.string().optional(),
+  bio: zod.string().optional(),
+  avatarConfig: zod.string().optional(),
+});
+
+export const UpdateProfileResponse = zod.object({
+  userId: zod.string(),
+  isAnon: zod.boolean(),
+  displayName: zod.string().nullish(),
+  username: zod.string().nullish(),
+  bio: zod.string().nullish(),
+  avatarConfig: zod.string().nullish(),
+  points: zod.number(),
+  extraScansUnlocked: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });

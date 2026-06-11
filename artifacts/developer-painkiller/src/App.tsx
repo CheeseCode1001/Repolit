@@ -10,9 +10,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { Home } from "@/pages/home";
 import { RepoDashboard } from "@/pages/repo";
+import { ProfilePage } from "@/pages/profile";
+import { SharedAnalysisPage } from "@/pages/shared";
 import NotFound from "@/pages/not-found";
 import { SplashScreen } from "@/components/splash-screen";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { getAnonId, clearAnonId } from "@/lib/anon-session";
 
 const queryClient = new QueryClient();
 
@@ -82,14 +85,13 @@ const clerkAppearance = {
 };
 
 // Registers the Clerk session token as a Bearer token on every API request.
-// Must live inside ClerkProvider so useAuth() works.
+// Also attaches the anonymous session ID header for non-authenticated requests.
 function ClerkAuthTokenRegistrar() {
   const { getToken } = useAuth();
 
   useEffect(() => {
-    // Wrap getToken with retries — in production proxy mode the first call
-    // often returns null while the short-lived JWT is still being fetched.
-    // We retry up to 3 times with increasing delays before giving up.
+    const anonId = getAnonId();
+
     const wrappedGetter = async () => {
       const delays = [200, 600, 1200];
       let token = await getToken();
@@ -100,8 +102,26 @@ function ClerkAuthTokenRegistrar() {
       }
       return token;
     };
+
+    // Inject anon ID into every request via a custom header
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      if (url.startsWith("/api")) {
+        const headers = new Headers((init as RequestInit)?.headers);
+        if (!headers.has("x-anon-id")) {
+          headers.set("x-anon-id", anonId);
+        }
+        return originalFetch(input, { ...(init as RequestInit), headers });
+      }
+      return originalFetch(input, init as RequestInit);
+    };
+
     setAuthTokenGetter(wrappedGetter);
-    return () => setAuthTokenGetter(null);
+    return () => {
+      setAuthTokenGetter(null);
+      window.fetch = originalFetch;
+    };
   }, [getToken]);
 
   return null;
@@ -116,6 +136,10 @@ function ClerkQueryClientCacheInvalidator() {
       const userId = user?.id ?? null;
       if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
         queryClient.clear();
+        // Clear anon session when user signs in (migration happens server-side)
+        if (userId && prevUserIdRef.current === null) {
+          clearAnonId();
+        }
       }
       prevUserIdRef.current = userId;
     });
@@ -155,6 +179,8 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/repo/:id" component={RepoDashboard} />
+        <Route path="/profile" component={ProfilePage} />
+        <Route path="/shared/:token" component={SharedAnalysisPage} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
         <Route component={NotFound} />

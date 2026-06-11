@@ -11,6 +11,7 @@ import {
   getGetRepoAnalysisQueryKey,
   useDeleteRepo,
   useChatWithRepo,
+  useShareRepo,
 } from "@workspace/api-client-react";
 import {
   Terminal,
@@ -31,6 +32,9 @@ import {
   User,
   Bot,
   FileCode,
+  Share2,
+  Check,
+  GitCommit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +49,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { ArchitectureViewer } from "@/components/architecture-viewer";
+import { ReactFlowArchitecture } from "@/components/react-flow-architecture";
+import { CommitHistory } from "@/components/commit-history";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -80,6 +86,8 @@ export function RepoDashboard() {
 
   const [logs, setLogs] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [archView, setArchView] = useState<"mermaid" | "flow">("mermaid");
+  const [shareCopied, setShareCopied] = useState(false);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -102,6 +110,7 @@ export function RepoDashboard() {
 
   const deleteRepo = useDeleteRepo();
   const chatWithRepo = useChatWithRepo();
+  const shareRepo = useShareRepo();
 
   const handleDelete = async () => {
     try {
@@ -111,6 +120,23 @@ export function RepoDashboard() {
     } catch (err: any) {
       toast({
         title: "Failed to delete repository",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const result = await shareRepo.mutateAsync({ id });
+      const shareUrl = `${window.location.origin}/shared/${result.shareToken}`;
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      toast({ title: "Share link copied!", description: shareUrl });
+      setTimeout(() => setShareCopied(false), 3000);
+    } catch (err: any) {
+      toast({
+        title: "Failed to create share link",
         description: err.message,
         variant: "destructive",
       });
@@ -127,8 +153,6 @@ export function RepoDashboard() {
     );
 
     try {
-      // Retry getToken once — in production proxy mode the first call can
-      // return null while the session is still being hydrated.
       let token = await getToken();
       if (!token) {
         await new Promise((r) => setTimeout(r, 400));
@@ -300,6 +324,8 @@ export function RepoDashboard() {
     "How is error handling structured?",
   ];
 
+  const isLocalRepo = repo.url.startsWith("local://");
+
   return (
     <div className="container max-w-screen-xl py-6 sm:py-8 space-y-5 sm:space-y-6">
       {/* Header */}
@@ -333,17 +359,19 @@ export function RepoDashboard() {
                   <Star className="w-3.5 h-3.5" /> {repo.stars} stars
                 </div>
               )}
-              <div className="flex items-center gap-1.5">
-                <GitBranch className="w-3.5 h-3.5" />
-                <a
-                  href={repo.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-primary hover:underline underline-offset-4 flex items-center gap-1"
-                >
-                  github.com <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
+              {!isLocalRepo && (
+                <div className="flex items-center gap-1.5">
+                  <GitBranch className="w-3.5 h-3.5" />
+                  <a
+                    href={repo.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-primary hover:underline underline-offset-4 flex items-center gap-1"
+                  >
+                    github.com <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
             </div>
 
             {repo.description && (
@@ -355,6 +383,21 @@ export function RepoDashboard() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
+            {repo.status === "done" && (
+              <Button
+                onClick={handleShare}
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs"
+                disabled={shareRepo.isPending}
+              >
+                {shareCopied ? (
+                  <><Check className="w-3 h-3 mr-1.5 text-primary" /> COPIED</>
+                ) : (
+                  <><Share2 className="w-3 h-3 mr-1.5" /> SHARE</>
+                )}
+              </Button>
+            )}
             {repo.status === "error" && !isAnalyzing && (
               <Button
                 onClick={startAnalysis}
@@ -468,8 +511,8 @@ export function RepoDashboard() {
       ) : analysis ? (
         <Tabs defaultValue="overview" className="w-full">
           {/* Full-width tab list */}
-          <div className="w-full">
-            <TabsList className="flex w-full justify-stretch h-auto p-1 bg-card border border-border/60 rounded-none gap-0.5 font-mono">
+          <div className="w-full overflow-x-auto">
+            <TabsList className="flex w-full justify-stretch h-auto p-1 bg-card border border-border/60 rounded-none gap-0.5 font-mono min-w-max sm:min-w-0">
               <TabsTrigger
                 value="overview"
                 className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex-1 text-[10px] sm:text-xs py-2 px-1 sm:px-4 rounded-none"
@@ -489,7 +532,7 @@ export function RepoDashboard() {
                 className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex-1 text-[10px] sm:text-xs py-2 px-1 sm:px-4 rounded-none"
               >
                 <Map className="w-3 h-3 sm:mr-1.5 shrink-0" />
-                <span className="hidden sm:inline">ARCHITECTURE</span>
+                <span className="hidden sm:inline">ARCH</span>
               </TabsTrigger>
               <TabsTrigger
                 value="onboarding"
@@ -504,6 +547,13 @@ export function RepoDashboard() {
               >
                 <ShieldAlert className="w-3 h-3 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">SECURITY</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="commits"
+                className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex-1 text-[10px] sm:text-xs py-2 px-1 sm:px-4 rounded-none"
+              >
+                <GitCommit className="w-3 h-3 sm:mr-1.5 shrink-0" />
+                <span className="hidden sm:inline">COMMITS</span>
               </TabsTrigger>
               <TabsTrigger
                 value="chat"
@@ -594,7 +644,33 @@ export function RepoDashboard() {
 
             <TabsContent value="architecture" className="m-0">
               {analysis.architecture ? (
-                <ArchitectureViewer chart={analysis.architecture} />
+                <div className="space-y-3">
+                  {/* View toggle */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={archView === "mermaid" ? "default" : "outline"}
+                      size="sm"
+                      className="font-mono text-xs rounded-none"
+                      onClick={() => setArchView("mermaid")}
+                    >
+                      <Map className="w-3 h-3 mr-1.5" /> MERMAID
+                    </Button>
+                    <Button
+                      variant={archView === "flow" ? "default" : "outline"}
+                      size="sm"
+                      className="font-mono text-xs rounded-none"
+                      onClick={() => setArchView("flow")}
+                    >
+                      <Activity className="w-3 h-3 mr-1.5" /> FLOW VIEW
+                    </Button>
+                  </div>
+
+                  {archView === "mermaid" ? (
+                    <ArchitectureViewer chart={analysis.architecture} />
+                  ) : (
+                    <ReactFlowArchitecture mermaidCode={analysis.architecture} />
+                  )}
+                </div>
               ) : (
                 <Card className="border-dashed border-border/50 py-20">
                   <CardContent className="flex flex-col items-center justify-center text-center p-0">
@@ -699,6 +775,10 @@ export function RepoDashboard() {
               </div>
             </TabsContent>
 
+            <TabsContent value="commits" className="m-0">
+              <CommitHistory commitHistoryJson={analysis.commitHistory} />
+            </TabsContent>
+
             <TabsContent value="chat" className="m-0">
               <Card className="border-border/60">
                 <CardHeader className="border-b border-border/50 bg-muted/20 py-3 px-4">
@@ -788,11 +868,11 @@ export function RepoDashboard() {
                     )}
                   </ScrollArea>
 
-                  {/* Input */}
-                  <div className="border-t border-border/50 p-3 sm:p-4 flex gap-2 items-end">
+                  {/* Chat input */}
+                  <div className="border-t border-border/50 p-3 flex gap-2 items-end">
                     <Textarea
-                      placeholder={`Ask about ${repo.name}... (e.g. "Where is auth handled?")`}
-                      className="min-h-[44px] max-h-32 resize-none font-mono text-xs bg-background border-border/60 focus-visible:ring-primary rounded-none flex-1"
+                      placeholder="Ask a question about this codebase..."
+                      className="min-h-[44px] max-h-32 resize-none font-mono text-sm rounded-none flex-1"
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => {

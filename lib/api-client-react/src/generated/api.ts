@@ -24,7 +24,12 @@ import type {
   CreateRepoBody,
   HealthStatus,
   Repo,
+  ShareTokenResponse,
+  SharedAnalysisResponse,
   Stats,
+  UpdateProfileBody,
+  UploadRepoBody,
+  UserProfile,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -261,6 +266,96 @@ export const useCreateRepo = <
   TContext
 > => {
   return useMutation(getCreateRepoMutationOptions(options));
+};
+
+/**
+ * @summary Upload a zip or folder for analysis
+ */
+export const getUploadRepoUrl = () => {
+  return `/api/repos/upload`;
+};
+
+export const uploadRepo = async (
+  uploadRepoBody: UploadRepoBody,
+  options?: RequestInit,
+): Promise<Repo> => {
+  const formData = new FormData();
+  if (uploadRepoBody.file !== undefined) {
+    formData.append(`file`, uploadRepoBody.file);
+  }
+
+  return customFetch<Repo>(getUploadRepoUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadRepoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadRepo>>,
+    TError,
+    { data: BodyType<UploadRepoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadRepo>>,
+  TError,
+  { data: BodyType<UploadRepoBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadRepo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadRepo>>,
+    { data: BodyType<UploadRepoBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadRepo(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadRepoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadRepo>>
+>;
+export type UploadRepoMutationBody = BodyType<UploadRepoBody>;
+export type UploadRepoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload a zip or folder for analysis
+ */
+export const useUploadRepo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadRepo>>,
+    TError,
+    { data: BodyType<UploadRepoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadRepo>>,
+  TError,
+  { data: BodyType<UploadRepoBody> },
+  TContext
+> => {
+  return useMutation(getUploadRepoMutationOptions(options));
 };
 
 /**
@@ -683,6 +778,178 @@ export const useChatWithRepo = <
 };
 
 /**
+ * @summary Generate or retrieve a public share token for a repo
+ */
+export const getShareRepoUrl = (id: number) => {
+  return `/api/repos/${id}/share`;
+};
+
+export const shareRepo = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ShareTokenResponse> => {
+  return customFetch<ShareTokenResponse>(getShareRepoUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getShareRepoMutationOptions = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shareRepo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof shareRepo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["shareRepo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof shareRepo>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return shareRepo(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ShareRepoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof shareRepo>>
+>;
+
+export type ShareRepoMutationError = ErrorType<ApiError>;
+
+/**
+ * @summary Generate or retrieve a public share token for a repo
+ */
+export const useShareRepo = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shareRepo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof shareRepo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getShareRepoMutationOptions(options));
+};
+
+/**
+ * @summary Get a publicly shared repo analysis by token (no auth required)
+ */
+export const getGetSharedAnalysisUrl = (token: string) => {
+  return `/api/shared/${token}`;
+};
+
+export const getSharedAnalysis = async (
+  token: string,
+  options?: RequestInit,
+): Promise<SharedAnalysisResponse> => {
+  return customFetch<SharedAnalysisResponse>(getGetSharedAnalysisUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSharedAnalysisQueryKey = (token: string) => {
+  return [`/api/shared/${token}`] as const;
+};
+
+export const getGetSharedAnalysisQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSharedAnalysis>>,
+  TError = ErrorType<ApiError>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSharedAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSharedAnalysisQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSharedAnalysis>>
+  > = ({ signal }) => getSharedAnalysis(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSharedAnalysis>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSharedAnalysisQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSharedAnalysis>>
+>;
+export type GetSharedAnalysisQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary Get a publicly shared repo analysis by token (no auth required)
+ */
+
+export function useGetSharedAnalysis<
+  TData = Awaited<ReturnType<typeof getSharedAnalysis>>,
+  TError = ErrorType<ApiError>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSharedAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSharedAnalysisQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get aggregate stats (total repos, analyses, languages breakdown)
  */
 export const getGetStatsUrl = () => {
@@ -746,3 +1013,164 @@ export function useGetStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get the current user's profile
+ */
+export const getGetProfileUrl = () => {
+  return `/api/profile`;
+};
+
+export const getProfile = async (
+  options?: RequestInit,
+): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getGetProfileUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProfileQueryKey = () => {
+  return [`/api/profile`] as const;
+};
+
+export const getGetProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProfile>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetProfileQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfile>>> = ({
+    signal,
+  }) => getProfile({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProfile>>
+>;
+export type GetProfileQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the current user's profile
+ */
+
+export function useGetProfile<
+  TData = Awaited<ReturnType<typeof getProfile>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProfileQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update the current user's profile
+ */
+export const getUpdateProfileUrl = () => {
+  return `/api/profile`;
+};
+
+export const updateProfile = async (
+  updateProfileBody: UpdateProfileBody,
+  options?: RequestInit,
+): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getUpdateProfileUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateProfileBody),
+  });
+};
+
+export const getUpdateProfileMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProfile>>,
+    TError,
+    { data: BodyType<UpdateProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProfile>>,
+  TError,
+  { data: BodyType<UpdateProfileBody> },
+  TContext
+> => {
+  const mutationKey = ["updateProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProfile>>,
+    { data: BodyType<UpdateProfileBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProfile>>
+>;
+export type UpdateProfileMutationBody = BodyType<UpdateProfileBody>;
+export type UpdateProfileMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update the current user's profile
+ */
+export const useUpdateProfile = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProfile>>,
+    TError,
+    { data: BodyType<UpdateProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProfile>>,
+  TError,
+  { data: BodyType<UpdateProfileBody> },
+  TContext
+> => {
+  return useMutation(getUpdateProfileMutationOptions(options));
+};
