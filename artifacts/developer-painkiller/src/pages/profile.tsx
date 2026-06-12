@@ -30,10 +30,41 @@ const AVATAR_SEEDS = [
   "iota-mesh", "kappa-grid", "lambda-stack", "mu-circuit",
 ];
 
-const AVATAR_COLORS = ["#760BF7", "#a855f7", "#c084fc", "#e879f9", "#f472b6", "#818cf8"];
+const ALL_PALETTE_COLORS = [
+  "#760BF7", "#a855f7", "#c084fc", "#e879f9", "#f472b6",
+  "#818cf8", "#60a5fa", "#34d399", "#fbbf24", "#f87171",
+  "#fb923c", "#a3e635", "#22d3ee", "#f43f5e", "#94a3b8",
+  "#f9a8d4", "#86efac", "#93c5fd", "#fcd34d", "#c4b5fd",
+  "#67e8f9", "#6ee7b7", "#fde68a", "#fca5a5", "#d8b4fe",
+];
+
+function hashSeed(seed: string): number {
+  let hash = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) + hash) ^ seed.charCodeAt(i);
+    hash = hash >>> 0;
+  }
+  return hash;
+}
+
+function generateAvatarColors(seed: string): string[] {
+  const hash = hashSeed(seed);
+  const colors: string[] = [];
+  const used = new Set<number>();
+  for (let i = 0; i < 5; i++) {
+    let idx = (hash + i * 7 + i * i * 3) % ALL_PALETTE_COLORS.length;
+    while (used.has(idx)) {
+      idx = (idx + 1) % ALL_PALETTE_COLORS.length;
+    }
+    used.add(idx);
+    colors.push(ALL_PALETTE_COLORS[idx]);
+  }
+  return colors;
+}
 
 function BoringAvatar({ seed, size = 64 }: { seed: string; size?: number }) {
-  return <Avatar size={size} name={seed} variant="beam" colors={AVATAR_COLORS} />;
+  const colors = generateAvatarColors(seed);
+  return <Avatar size={size} name={seed} variant="beam" colors={colors} />;
 }
 
 function GitHubRepoBrowser({ githubUsername }: { githubUsername: string | null | undefined }) {

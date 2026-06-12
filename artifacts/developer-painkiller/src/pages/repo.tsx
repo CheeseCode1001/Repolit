@@ -48,6 +48,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
 import { ArchitectureViewer } from "@/components/architecture-viewer";
 import { ReactFlowArchitecture } from "@/components/react-flow-architecture";
 import { CommitHistory } from "@/components/commit-history";
@@ -147,6 +148,7 @@ export function RepoDashboard() {
     if (!id || isAnalyzing) return;
     setIsAnalyzing(true);
     setLogs(["[SYSTEM] Initializing analysis sequence..."]);
+    requestNotificationPermission();
 
     queryClient.setQueryData(getGetRepoQueryKey(id), (old: any) =>
       old ? { ...old, status: "analyzing" } : old
@@ -204,6 +206,12 @@ export function RepoDashboard() {
                 queryClient.invalidateQueries({
                   queryKey: getGetRepoAnalysisQueryKey(id),
                 });
+                const repoName = repo?.url ?? "Repository";
+                toast({ title: "Analysis complete! ⚡", description: `${repoName} has been fully analyzed.` });
+                showBrowserNotification(
+                  "Analysis Complete! ⚡",
+                  `${repoName} is fully analyzed — go check what secrets it's hiding 🔍`
+                );
               }
             } catch (e) {
               /* ignore parse errors */

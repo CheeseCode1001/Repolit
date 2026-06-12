@@ -1,4 +1,4 @@
-const CACHE = "repograph-v1";
+const CACHE = "repolit-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -16,7 +16,6 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
-  // Never cache API calls or Clerk proxy
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/api/__clerk")) return;
   e.respondWith(
     fetch(e.request)
@@ -32,5 +31,31 @@ self.addEventListener("fetch", (e) => {
           (cached) => cached ?? new Response("Network error", { status: 503 })
         )
       )
+  );
+});
+
+self.addEventListener("push", (e) => {
+  let data = { title: "Repolit", body: "You have a new notification" };
+  try {
+    data = e.data ? e.data.json() : data;
+  } catch {}
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/logo-icon.png",
+      badge: "/logo-icon.png",
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: "window" }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow("/");
+    })
   );
 });

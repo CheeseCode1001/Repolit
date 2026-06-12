@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import mermaid from 'mermaid';
-import { ZoomIn, ZoomOut, RefreshCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -18,11 +18,8 @@ function cleanChart(raw: string): string {
     .replace(/\s*```\s*$/m, '')
     .trim();
 
-  // Replace <br> tags with a space — these cause PS token parse errors
   result = result.replace(/<br\s*\/?>/gi, ' ');
 
-  // Inside square bracket labels [...], strip parentheses and angle brackets
-  // which confuse the Mermaid parser (it tries to read them as shape syntax)
   result = result.replace(/\[([^\]]*)\]/g, (_match, inner) => {
     const sanitized = inner
       .replace(/[()]/g, '')
@@ -30,6 +27,11 @@ function cleanChart(raw: string): string {
       .replace(/\s+/g, ' ')
       .trim();
     return `[${sanitized}]`;
+  });
+
+  result = result.replace(/["'`]/g, (c) => {
+    if (c === '"') return "'";
+    return c;
   });
 
   return result;
@@ -57,14 +59,30 @@ export function MermaidDiagram({ chart }: MermaidProps) {
 
       try {
         const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+        document.querySelectorAll(`[id^="mermaid-"]`).forEach((el) => {
+          if (el.parentElement === document.body) el.remove();
+        });
+
         const { svg } = await mermaid.render(id, cleaned);
+
+        document.querySelectorAll(`[id^="mermaid-"]`).forEach((el) => {
+          if (el.parentElement === document.body) el.remove();
+        });
+
         if (isMounted) {
           setSvgCode(svg);
           setIsLoading(false);
         }
       } catch (err: any) {
+        document.querySelectorAll(`[id^="mermaid-"]`).forEach((el) => {
+          if (el.parentElement === document.body) el.remove();
+        });
+
         if (isMounted) {
-          setError(err.message || 'Failed to render diagram');
+          const msg = err.message || 'Failed to render diagram';
+          const cleanMsg = msg.replace(/mermaid version [\d.]+/gi, '').trim();
+          setError(cleanMsg || 'Diagram syntax error');
           setIsLoading(false);
         }
       }
@@ -80,18 +98,28 @@ export function MermaidDiagram({ chart }: MermaidProps) {
 
   if (error) {
     return (
-      <div className="flex flex-col gap-3 p-6 bg-destructive/10 border border-destructive/20 h-full">
-        <p className="text-destructive font-mono text-sm">Failed to render architecture diagram</p>
-        <pre className="text-xs text-destructive/70 bg-background/50 p-4 w-full overflow-auto max-h-[200px] font-mono">
-          {error}
-        </pre>
+      <div className="flex flex-col items-center justify-center gap-4 p-8 h-full min-h-[300px] bg-muted/10 border border-border/40">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <AlertTriangle className="w-5 h-5 text-yellow-500/70" />
+          <span className="font-mono text-sm font-medium">Diagram could not be rendered</span>
+        </div>
+        <p className="text-xs font-mono text-muted-foreground/60 max-w-md text-center">
+          The AI generated a diagram with syntax issues. The analysis data is still available in the other tabs.
+        </p>
+        <details className="w-full max-w-md">
+          <summary className="text-[10px] font-mono text-muted-foreground/40 cursor-pointer hover:text-muted-foreground/60 text-center">
+            show error details
+          </summary>
+          <pre className="mt-2 text-[10px] text-muted-foreground/50 bg-background/50 p-3 overflow-auto max-h-[120px] font-mono border border-border/20">
+            {error}
+          </pre>
+        </details>
       </div>
     );
   }
 
   return (
     <div className="relative border border-border bg-card/50 overflow-hidden flex flex-col h-full">
-      {/* Controls */}
       <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-background/90 backdrop-blur p-1 border border-border shadow">
         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={handleZoomOut}>
           <ZoomOut className="h-3.5 w-3.5" />
@@ -108,7 +136,6 @@ export function MermaidDiagram({ chart }: MermaidProps) {
         </Button>
       </div>
 
-      {/* Diagram area */}
       <div className="flex-1 overflow-auto p-8 flex items-center justify-center min-h-[300px]">
         {isLoading ? (
           <Skeleton className="w-[70%] h-[300px] opacity-20" />
