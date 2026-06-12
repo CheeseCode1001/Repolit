@@ -42,7 +42,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
       >
         <span
           className="font-sans font-bold text-[2.5rem] tracking-tight text-primary select-none"
-          style={{ letterSpacing: "-0.01em" }}
+          style={{ letterSpacing: "-0.06em" }}
         >
           repolit
         </span>

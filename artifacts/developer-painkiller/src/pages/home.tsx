@@ -1,11 +1,35 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { Search, GitBranch, Github, Code, Terminal, Clock, Star, Upload, FolderOpen, Users } from "lucide-react";
-import { useListRepos, useGetStats, useCreateRepo, useUploadRepo, getListReposQueryKey } from "@workspace/api-client-react";
+import {
+  Search,
+  GitBranch,
+  Github,
+  Code,
+  Terminal,
+  Clock,
+  Star,
+  Upload,
+  FolderOpen,
+  Users,
+} from "lucide-react";
+import {
+  useListRepos,
+  useGetStats,
+  useCreateRepo,
+  useUploadRepo,
+  getListReposQueryKey,
+} from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +66,8 @@ export function Home() {
       const repo = await createRepo.mutateAsync({ data: { url } });
       setLocation(`/repo/${repo.id}`);
     } catch (err: any) {
-      const msg = err?.data?.error ?? err.message ?? "Failed to submit repository.";
+      const msg =
+        err?.data?.error ?? err.message ?? "Failed to submit repository.";
       toast({
         title: "Error starting analysis",
         description: msg,
@@ -91,13 +116,12 @@ export function Home() {
         </div>
 
         <h1 className="text-3xl sm:text-5xl md:text-6xl tracking-tight leading-tight font-bold">
-          Kill{" "}
-          <span className="text-primary font-mono">Onboarding</span> Pain.
+          Kill <span className="text-primary font-mono">Onboarding</span> Pain.
         </h1>
 
         <p className="text-sm sm:text-base md:text-lg text-muted-foreground font-mono max-w-2xl leading-relaxed px-2">
-          Instantly unpack, map, and understand any codebase. Paste a GitHub
-          URL and get architecture diagrams, onboarding steps, and security
+          Instantly unpack, map, and understand any codebase. Paste a GitHub URL
+          and get architecture diagrams, onboarding steps, and security
           insights.
         </p>
 
@@ -143,7 +167,7 @@ export function Home() {
             disabled={uploadRepo.isPending}
           >
             <Upload className="w-3.5 h-3.5" />
-            {uploadRepo.isPending ? "UPLOADING..." : "UPLOAD ZIP"}
+            {uploadRepo.isPending ? "UPLOADING..." : "UPLOAD FOLDER"}
           </Button>
           <Button
             variant="outline"
@@ -179,9 +203,12 @@ export function Home() {
           <p className="text-xs font-mono text-muted-foreground/70">
             <Users className="w-3 h-3 inline mr-1" />
             Signed in — scan up to 2 repos free.{" "}
-            <span className="text-primary">Earn 10 pts per scan</span> to unlock more.
+            <span className="text-primary">Earn 10 pts per scan</span> to unlock
+            more.
             {stats && stats.points > 0 && (
-              <span className="ml-2 text-primary font-bold">{stats.points} pts available</span>
+              <span className="ml-2 text-primary font-bold">
+                {stats.points} pts available
+              </span>
             )}
           </p>
         )}
@@ -260,7 +287,9 @@ export function Home() {
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2 border-b border-border/50 pb-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
-          <h2 className="text-lg sm:text-xl font-bold font-mono tracking-tight">My Repositories</h2>
+          <h2 className="text-lg sm:text-xl font-bold font-mono tracking-tight">
+            My Repositories
+          </h2>
         </div>
 
         {reposLoading ? (

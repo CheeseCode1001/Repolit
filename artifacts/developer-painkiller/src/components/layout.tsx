@@ -105,7 +105,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               className="h-8 w-8 object-contain"
               style={{ borderRadius: "22%" }}
             />
-            <span className="font-sans font-bold tracking-tight text-primary text-[23px]">
+            <span className="font-sans font-bold tracking-tight text-primary text-[28px]">
               repolit
             </span>
           </Link>
