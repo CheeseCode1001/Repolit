@@ -112,7 +112,7 @@ export function Home() {
       <section className="flex flex-col items-center text-center gap-5 max-w-3xl mx-auto pt-4 sm:pt-8 w-full">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs sm:text-sm font-mono border border-border/60 rounded-tl-[0px] rounded-tr-[0px] rounded-br-[0px] rounded-bl-[0px]">
           <Terminal className="w-3.5 h-3.5 text-primary" />
-          <span>v1.0.0-beta — System Online</span>
+          <span>Its free and its free for life.</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl md:text-6xl tracking-tight leading-tight font-bold">
