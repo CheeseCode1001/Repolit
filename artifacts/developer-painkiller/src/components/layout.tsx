@@ -10,14 +10,7 @@ import {
 import Avatar from "boring-avatars";
 
 const logoIcon = "/logo-icon.png";
-const AVATAR_COLORS = [
-  "#760BF7",
-  "#a855f7",
-  "#c084fc",
-  "#e879f9",
-  "#f472b6",
-  "#818cf8",
-];
+const AVATAR_COLORS = ["#9402b1","#ffd500","#ff9f1a","#f07c19","#e24d28"];
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -57,7 +50,7 @@ function ProfileButton() {
       title="Your Profile"
     >
       {user ? (
-        <Avatar size={28} name={seed} variant="beam" />
+        <Avatar size={28} name={seed} variant="beam" colors={AVATAR_COLORS} />
       ) : (
         <User className="w-3.5 h-3.5" />
       )}
