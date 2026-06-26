@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: repograph-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: repograph
+      POSTGRES_DB: repograph
+    volumes:
+      - repograph_pgdata:/var/lib/postgresql/data
+
+volumes:
+  repograph_pgdata:

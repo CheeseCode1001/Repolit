@@ -46,10 +46,10 @@ function parseGitHubUrl(url: string): { owner: string; name: string } | null {
   }
 }
 
-async function fetchGitHubRepoMeta(owner: string, name: string) {
+async function fetchGitHubRepoMeta(owner: string, name: string, userToken?: string | null) {
   try {
     const res = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
-      headers: githubHeaders(),
+      headers: githubHeaders(userToken),
     });
     if (!res.ok) return null;
     const data = await res.json() as {
@@ -67,11 +67,11 @@ async function fetchGitHubRepoMeta(owner: string, name: string) {
   }
 }
 
-async function fetchRepoTree(owner: string, name: string): Promise<string> {
+async function fetchRepoTree(owner: string, name: string, userToken?: string | null): Promise<string> {
   try {
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/git/trees/HEAD?recursive=1`,
-      { headers: githubHeaders() }
+      { headers: githubHeaders(userToken) }
     );
     if (!res.ok) return "";
     const data = await res.json() as { tree?: { path?: string; type?: string }[] };
@@ -85,11 +85,11 @@ async function fetchRepoTree(owner: string, name: string): Promise<string> {
   }
 }
 
-async function fetchFileContent(owner: string, name: string, path: string): Promise<string> {
+async function fetchFileContent(owner: string, name: string, path: string, userToken?: string | null): Promise<string> {
   try {
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/contents/${path}`,
-      { headers: githubHeaders() }
+      { headers: githubHeaders(userToken) }
     );
     if (!res.ok) return "";
     const data = await res.json() as { content?: string; encoding?: string };
@@ -102,18 +102,18 @@ async function fetchFileContent(owner: string, name: string, path: string): Prom
   }
 }
 
-function githubHeaders(): Record<string, string> {
+function githubHeaders(userToken?: string | null): Record<string, string> {
   const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
-  const token = process.env.GITHUB_TOKEN;
+  const token = userToken || process.env.GITHUB_TOKEN;
   if (token) headers["Authorization"] = `Bearer ${token}`;
   return headers;
 }
 
-async function fetchCommitHistory(owner: string, name: string): Promise<string> {
+async function fetchCommitHistory(owner: string, name: string, userToken?: string | null): Promise<string> {
   try {
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/commits?per_page=30`,
-      { headers: githubHeaders() }
+      { headers: githubHeaders(userToken) }
     );
     if (!res.ok) {
       return "[]";
@@ -241,7 +241,17 @@ router.post("/repos", async (req, res) => {
       return;
     }
 
-    const meta = await fetchGitHubRepoMeta(owner, name);
+    let userToken: string | null = null;
+    if (!isAnonUserId(userId)) {
+      const [profile] = await db
+        .select({ githubAccessToken: userProfilesTable.githubAccessToken })
+        .from(userProfilesTable)
+        .where(eq(userProfilesTable.userId, userId))
+        .limit(1);
+      userToken = profile?.githubAccessToken ?? null;
+    }
+
+    const meta = await fetchGitHubRepoMeta(owner, name, userToken);
     const [repo] = await db.insert(reposTable).values({
       userId,
       url,
@@ -347,10 +357,20 @@ router.post("/repos/:id/analyze", async (req, res) => {
   };
 
   try {
+    let userToken: string | null = null;
+    if (!isAnonUserId(userId)) {
+      const [profile] = await db
+        .select({ githubAccessToken: userProfilesTable.githubAccessToken })
+        .from(userProfilesTable)
+        .where(eq(userProfilesTable.userId, userId))
+        .limit(1);
+      userToken = profile?.githubAccessToken ?? null;
+    }
+
     await db.update(reposTable).set({ status: "analyzing" }).where(eq(reposTable.id, repo.id));
     send({ step: "Fetching repository tree..." });
 
-    const tree = await fetchRepoTree(repo.owner, repo.name);
+    const tree = await fetchRepoTree(repo.owner, repo.name, userToken);
 
     send({ step: "Reading key files..." });
     const keyFiles = tree.split("\n").filter(f =>
@@ -359,7 +379,7 @@ router.post("/repos/:id/analyze", async (req, res) => {
 
     const fileContents: string[] = [];
     for (const file of keyFiles) {
-      const content = await fetchFileContent(repo.owner, repo.name, file);
+      const content = await fetchFileContent(repo.owner, repo.name, file, userToken);
       if (content) fileContents.push(`=== ${file} ===\n${content}`);
     }
 
@@ -493,7 +513,7 @@ ${context}` }] }],
     });
 
     send({ step: "Fetching commit history..." });
-    const commitHistoryPromise = fetchCommitHistory(repo.owner, repo.name);
+    const commitHistoryPromise = fetchCommitHistory(repo.owner, repo.name, userToken);
 
     const [summaryResult, archResult, onboardingResult, securityResult, startHereResult, commitHistory] = await Promise.all([
       summaryPromise, architecturePromise, onboardingPromise, securityPromise, startHerePromise, commitHistoryPromise

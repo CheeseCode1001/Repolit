@@ -57,7 +57,7 @@ function ProfileButton() {
       title="Your Profile"
     >
       {user ? (
-        <Avatar size={28} name={seed} variant="beam" colors={AVATAR_COLORS} />
+        <Avatar size={28} name={seed} variant="beam" />
       ) : (
         <User className="w-3.5 h-3.5" />
       )}
@@ -142,7 +142,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             repolit — AI-powered repo analysis
           </p>
           <p className="text-xs text-muted-foreground font-mono opacity-50">
-            Powered by Gemini 2.5 Flash
+            Powered by Gemini
           </p>
         </div>
       </footer>

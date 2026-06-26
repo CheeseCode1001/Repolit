@@ -10,11 +10,15 @@ const router = Router();
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID ?? "";
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET ?? "";
-const BASE_URL = process.env.REPLIT_DEV_DOMAIN
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-  : process.env.REPLIT_DOMAINS?.split(",")[0]
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-    : "http://localhost:80";
+function resolveBaseUrl(): string {
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, "");
+  if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  if (replitDomain) return `https://${replitDomain}`;
+  return "http://localhost:5173";
+}
+
+const BASE_URL = resolveBaseUrl();
 
 const CALLBACK_URL = `${BASE_URL}/api/github/oauth/callback`;
 

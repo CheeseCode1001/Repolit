@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Search,
@@ -17,7 +17,9 @@ import {
   useGetStats,
   useCreateRepo,
   useUploadRepo,
+  useGetProfile,
   getListReposQueryKey,
+  getGetProfileQueryKey,
 } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
@@ -33,25 +35,49 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { GitHubRepoPicker } from "@/components/github-repo-picker";
 
 export function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [url, setUrl] = useState("");
+  const [repoPickerOpen, setRepoPickerOpen] = useState(false);
   const { isSignedIn, isLoaded } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scanInputRef = useRef<HTMLInputElement>(null);
 
   const { data: stats, isLoading: statsLoading } = useGetStats();
   const { data: repos, isLoading: reposLoading } = useListRepos({
     query: { queryKey: getListReposQueryKey() },
   });
+  const { data: profile } = useGetProfile({
+    query: {
+      queryKey: getGetProfileQueryKey(),
+      enabled: !!isSignedIn,
+    },
+  });
 
   const createRepo = useCreateRepo();
   const uploadRepo = useUploadRepo();
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get("url");
+    if (urlParam) {
+      setUrl(urlParam);
+      setLocation("/", { replace: true });
+      scanInputRef.current?.focus();
+    }
+  }, [setLocation]);
+
+  const githubConnected = !!profile?.githubUsername;
+  const showRepoPicker =
+    repoPickerOpen && isSignedIn && githubConnected && url.length >= 0;
+
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
+    setRepoPickerOpen(false);
 
     if (!url.includes("github.com")) {
       toast({
@@ -74,6 +100,12 @@ export function Home() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleRepoSelect = (htmlUrl: string) => {
+    setUrl(htmlUrl);
+    setRepoPickerOpen(false);
+    scanInputRef.current?.focus();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,13 +164,35 @@ export function Home() {
           <div className="relative flex-1">
             <Github className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
+              ref={scanInputRef}
               type="url"
-              placeholder="https://github.com/owner/repo"
+              placeholder={
+                githubConnected
+                  ? "Search or paste a GitHub repository URL"
+                  : "https://github.com/owner/repo"
+              }
               className="pl-10 h-11 sm:h-12 font-mono text-sm bg-card border-border/60 focus-visible:ring-primary w-full rounded-none"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                if (githubConnected) setRepoPickerOpen(true);
+              }}
+              onFocus={() => {
+                if (githubConnected) setRepoPickerOpen(true);
+              }}
+              onBlur={() => {
+                window.setTimeout(() => setRepoPickerOpen(false), 150);
+              }}
               required
             />
+            {showRepoPicker && profile?.githubUsername && (
+              <GitHubRepoPicker
+                open={showRepoPicker}
+                query={url}
+                githubUsername={profile.githubUsername}
+                onSelect={handleRepoSelect}
+              />
+            )}
           </div>
           <Button
             type="submit"

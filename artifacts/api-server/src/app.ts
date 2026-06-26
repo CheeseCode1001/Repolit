@@ -157,51 +157,48 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ---------------------------------------------------------------------------
-// Clerk middleware
-//
-// We use the per-request callback form so we can dynamically compute proxyUrl.
-// Priority: staticProxyUrl (from env vars at startup) → per-request headers.
-//
-// The proxyUrl MUST match the `iss` claim in the JWT that the frontend's
-// ClerkProvider emits. In production proxy mode that issuer is the proxy URL
-// that was stamped by clerkProxyMiddleware via the Clerk-Proxy-Url header.
+// Clerk middleware (optional in local dev when CLERK_SECRET_KEY is unset)
 // ---------------------------------------------------------------------------
 
-app.use(
-  clerkMiddleware((req) => {
-    let proxyUrl: string | undefined;
+if (process.env.CLERK_SECRET_KEY) {
+  app.use(
+    clerkMiddleware((req) => {
+      let proxyUrl: string | undefined;
 
-    if (process.env.NODE_ENV === "production") {
-      if (staticProxyUrl) {
-        proxyUrl = staticProxyUrl;
-      } else {
-        // Fall back: compute per-request from forwarded headers
-        const host = getClerkProxyHost(
-          req as { headers: Record<string, string | string[] | undefined> },
-        );
-        if (host) {
-          const proto =
-            (req.headers["x-forwarded-proto"] as string | undefined)
-              ?.split(",")[0]
-              ?.trim() ?? "https";
-          proxyUrl = `${proto}://${host}${CLERK_PROXY_PATH}`;
-
-          req.log?.warn(
-            { proxyUrl, host, xForwardedProto: req.headers["x-forwarded-proto"] },
-            "Clerk proxyUrl computed from headers (no static source)",
+      if (process.env.NODE_ENV === "production") {
+        if (staticProxyUrl) {
+          proxyUrl = staticProxyUrl;
+        } else {
+          // Fall back: compute per-request from forwarded headers
+          const host = getClerkProxyHost(
+            req as { headers: Record<string, string | string[] | undefined> },
           );
+          if (host) {
+            const proto =
+              (req.headers["x-forwarded-proto"] as string | undefined)
+                ?.split(",")[0]
+                ?.trim() ?? "https";
+            proxyUrl = `${proto}://${host}${CLERK_PROXY_PATH}`;
+
+            req.log?.warn(
+              { proxyUrl, host, xForwardedProto: req.headers["x-forwarded-proto"] },
+              "Clerk proxyUrl computed from headers (no static source)",
+            );
+          }
         }
       }
-    }
 
-    return {
-      publishableKey: frontendPublishableKey,
-      secretKey: process.env.CLERK_SECRET_KEY,
-      jwtKey: clerkJwtKey,
-      proxyUrl,
-    };
-  }),
-);
+      return {
+        publishableKey: frontendPublishableKey,
+        secretKey: process.env.CLERK_SECRET_KEY,
+        jwtKey: clerkJwtKey,
+        proxyUrl,
+      };
+    }),
+  );
+} else {
+  logger.warn("CLERK_SECRET_KEY not set — Clerk auth middleware disabled");
+}
 
 app.use("/api", router);
 
