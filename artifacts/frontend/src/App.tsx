@@ -14,7 +14,6 @@ import { ProfilePage } from "@/pages/profile";
 import { SharedAnalysisPage } from "@/pages/shared";
 import NotFound from "@/pages/not-found";
 import { SplashScreen } from "@/components/splash-screen";
-import { FundPage } from "@/pages/fund";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { getAnonId, clearAnonId } from "@/lib/anon-session";
 import { useToast } from "@/hooks/use-toast";
@@ -257,7 +256,6 @@ function Router() {
         <Route path="/repo/:id" component={RepoDashboard} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/shared/:token" component={SharedAnalysisPage} />
-        <Route path="/fund" component={FundPage} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
         <Route component={NotFound} />
