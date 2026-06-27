@@ -113,15 +113,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <Github className="w-4 h-4" />
             </a>
+             <a
+              href="https://github.com/sponsors/CheeseCode1001"
+              target="_blank"
+              rel="noreferrer">
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-3 text-xs border-border/60 text-muted-foreground hover:text-foreground hidden sm:flex gap-1 items-center"
-              onClick={() => setLocation("/fund")}
+              className="h-7 px-3 text-xs border-border/60 text-muted-foreground hover:bg-primary hover:text-foreground gap-1 items-center"
             >
               <Coffee className="w-3.5 h-3.5" />
-              <span>Buy me a coffee</span>
+              <span className="hidden sm:inline-flex">Buy me a coffee</span>
             </Button>
+            </a>
             <ThemeToggle />
             <Show when="signed-out">
               <Button

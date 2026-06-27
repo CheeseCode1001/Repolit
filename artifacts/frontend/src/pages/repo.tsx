@@ -35,6 +35,7 @@ import {
   Share2,
   Check,
   GitCommit,
+  Coffee,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type StartHereFile = {
   file: string;
@@ -94,6 +102,9 @@ export function RepoDashboard() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const [showCoffeeModal, setShowCoffeeModal] = useState(false);
+  const [hasShownCoffeeModal, setHasShownCoffeeModal] = useState(false);
 
   const { data: repo, isLoading: repoLoading } = useGetRepo(id, {
     query: { enabled: !!id, queryKey: getGetRepoQueryKey(id) },
@@ -267,6 +278,19 @@ export function RepoDashboard() {
       startAnalysis();
     }
   }, [repo?.status]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (repo?.status === "done" && !hasShownCoffeeModal) {
+        if (window.scrollY > 400) {
+          setShowCoffeeModal(true);
+          setHasShownCoffeeModal(true);
+        }
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [repo?.status, hasShownCoffeeModal]);
 
   if (repoLoading) {
     return (
@@ -907,6 +931,30 @@ export function RepoDashboard() {
           </div>
         </Tabs>
       ) : null}
+
+      <Dialog open={showCoffeeModal} onOpenChange={setShowCoffeeModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            {/* logo for repograph */}
+            <img src="/logo-icon.png" alt="Repograph" className="w-10 h-10 rounded-full" />
+            <DialogTitle className="font-mono text-lg">Hope you're enjoying Repograph!</DialogTitle>
+            <DialogDescription className="font-mono text-sm mt-2">
+              If you find this analysis helpful, consider supporting the development. It keeps the servers running and helps us build more features!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end mt-4">
+            <a
+              href="https://github.com/sponsors/CheeseCode1001"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-md text-sm font-mono font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-primary hover:text-primary-foreground h-9 px-4 py-2 w-full sm:w-auto"
+            >
+              <Coffee className="w-4 h-4 mr-2" />
+              Buy me a coffee
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
