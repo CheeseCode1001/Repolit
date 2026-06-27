@@ -29,8 +29,7 @@ Repolit scans GitHub repositories (or local codebases) and uses Gemini AI to gen
 
 ## 🖼️ Screenshots
 
-> Screenshots coming soon — run the app locally and explore!
-
+![Repolit App Screenshot](artifacts/frontend/public/app-screenshot.png)
 ---
 
 ## 🏗️ Tech Stack
