@@ -936,9 +936,9 @@ export function RepoDashboard() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             {/* logo for repograph */}
-            <img src="/logo-icon.png" alt="Repograph" className="w-10 h-10 rounded-full" />
+            <img src="/logo-icon.png" alt="Repograph" className="w-12 h-12" />
             <DialogTitle className="font-mono text-lg">Hope you're enjoying Repograph!</DialogTitle>
-            <DialogDescription className="font-mono text-sm mt-2">
+            <DialogDescription className="font-mono border border-primary p-5 bg-primary/2  text-sm mt-2">
               If you find this analysis helpful, consider supporting the development. It keeps the servers running and helps us build more features!
             </DialogDescription>
           </DialogHeader>

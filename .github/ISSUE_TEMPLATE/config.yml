@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/CheeseCode1001/Repograph/discussions
+    about: Ask questions, share ideas, or discuss Repolit with the community.
+  - name: 💜 Sponsor
+    url: https://github.com/sponsors/CheeseCode1001
+    about: Support Repolit development by sponsoring the project.
