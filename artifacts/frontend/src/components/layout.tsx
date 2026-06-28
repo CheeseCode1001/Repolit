@@ -120,9 +120,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Button
               variant="outline"
               size="sm"
-              className="px-1 sm:px-3 text-xs border-border/60 text-muted-foreground hover:bg-primary hover:text-white gap-1 items-center"
+              className="px-1 sm:px-3 text-xs border-border/60 text-muted-foreground hover:bg-primary hover:text-white sm:gap-1 items-center"
             >
-              <Coffee className="w-3.5 h-3.5" />
+              <Coffee className="w-4 h-4" />
               <span className="hidden sm:inline-flex">Buy me a coffee</span>
             </Button>
             </a>
@@ -131,14 +131,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="font-mono text-[10px] uppercase tracking-wider h-7 px-3 text-muted-foreground hover:text-foreground"
+                className="font-mono text-[10px] uppercase tracking-wider px-2 sm:px-3 text-muted-foreground hover:text-foreground"
                 onClick={() => setLocation("/sign-up")}
               >
                 Sign Up
               </Button>
               <Button
                 size="sm"
-                className="font-mono text-[10px] uppercase tracking-wider h-7 px-3"
+                className="font-mono text-[10px] uppercase tracking-wider px-2 sm:px-3"
                 onClick={() => setLocation("/sign-in")}
               >
                 Sign In
