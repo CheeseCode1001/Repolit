@@ -48,7 +48,7 @@ AI-powered codebase intelligence tool. Users paste a GitHub URL and get:
 
 ## Auth Architecture
 
-**Clerk auth** powers user identity. Two env vars may differ across Replit Clerk integrations:
+**Clerk auth** powers user identity. Two env vars may differ across Clerk integrations:
 - `VITE_CLERK_PUBLISHABLE_KEY` — the frontend's Clerk instance (`ready-magpie-15`). Tokens are issued by this instance.
 - `CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — may point to a different instance; not used for token verification.
 
@@ -60,7 +60,7 @@ AI-powered codebase intelligence tool. Users paste a GitHub URL and get:
 - `ClerkAuthTokenRegistrar` retries `getToken()` once with a 300ms delay when it returns null (handles proxy hydration race condition)
 
 **Production proxy + issuer mismatch fix**:
-- In production, Replit sets `VITE_CLERK_PROXY_URL` automatically (e.g. `https://app.replit.app/api/__clerk`).
+- In production,  set `VITE_CLERK_PROXY_URL` (e.g. `https://app.repolit.app/api/__clerk`).
 - When the proxy is active, Clerk stamps that URL as the JWT `iss` (issuer) claim.
 - `clerkMiddleware` reads `process.env.VITE_CLERK_PROXY_URL` as `proxyUrl` — this EXACT value is what the frontend passes to `ClerkProvider`, guaranteeing the issuer check passes.
 - In dev (`VITE_CLERK_PROXY_URL` unset), `proxyUrl` is `undefined` so `iss` is checked against the direct FAPI URL.

@@ -19,23 +19,11 @@ import {
 //   2. VITE_CLERK_PROXY_URL — Replit injects this for the frontend build;
 //                             it may also be in the API server process env
 //   3. REPLIT_DOMAINS    — Replit sets this to the production domain(s)
-//   4. fallback to per-request computation from x-forwarded-host header
+//   3. fallback to per-request computation from x-forwarded-host header
 // ---------------------------------------------------------------------------
 
 function resolveStaticProxyUrl(): string | undefined {
   if (process.env.NODE_ENV !== "production") return undefined;
-
-  // REPLIT_DOMAINS is the authoritative production domain — always use it to
-  // build an absolute proxy URL, even when CLERK_PROXY_URL / VITE_CLERK_PROXY_URL
-  // are set but contain only a relative path like "/api/__clerk".
-  const domain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
-
-  const makeAbsolute = (val: string): string => {
-    if (val.startsWith("https://") || val.startsWith("http://")) return val;
-    // Relative path — promote to absolute using the production domain.
-    if (domain) return `https://${domain}${val.startsWith("/") ? val : `/${val}`}`;
-    return val; // Can't promote without domain; will likely fail — warn below.
-  };
 
   const candidates: Array<{ src: string; raw: string }> = [];
 
@@ -45,15 +33,11 @@ function resolveStaticProxyUrl(): string | undefined {
   if (process.env.VITE_CLERK_PROXY_URL) {
     candidates.push({ src: "VITE_CLERK_PROXY_URL", raw: process.env.VITE_CLERK_PROXY_URL });
   }
-  if (domain) {
-    candidates.push({ src: "REPLIT_DOMAINS", raw: `https://${domain}${CLERK_PROXY_PATH}` });
-  }
 
   if (candidates.length > 0) {
     const { src, raw } = candidates[0];
-    const val = makeAbsolute(raw);
-    logger.info({ src, raw, proxyUrl: val }, "Clerk static proxyUrl resolved");
-    return val;
+    logger.info({ src, raw, proxyUrl: raw }, "Clerk static proxyUrl resolved");
+    return raw;
   }
 
   logger.warn("No static proxyUrl source found — will fall back to per-request header computation");
@@ -123,7 +107,6 @@ logger.info(
     viteClerkProxyUrl: process.env.VITE_CLERK_PROXY_URL,
     hasClerkProxyUrl: !!process.env.CLERK_PROXY_URL,
     clerkProxyUrl: process.env.CLERK_PROXY_URL,
-    replitDomains: process.env.REPLIT_DOMAINS,
     hasJwtKey: !!clerkJwtKey,
   },
   "Clerk startup diagnostics",

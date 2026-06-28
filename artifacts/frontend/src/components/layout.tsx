@@ -120,7 +120,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-3 text-xs border-border/60 text-muted-foreground hover:bg-primary hover:text-white gap-1 items-center"
+              className="h-7 px-1 sm:px-3 text-xs border-border/60 text-muted-foreground hover:bg-primary hover:text-white gap-1 items-center"
             >
               <Coffee className="w-3.5 h-3.5" />
               <span className="hidden sm:inline-flex">Buy me a coffee</span>

@@ -56,7 +56,6 @@ router.get("/debug", (req, res) => {
     proxyUrl: {
       static_CLERK_PROXY_URL: process.env.CLERK_PROXY_URL ?? null,
       static_VITE_CLERK_PROXY_URL: process.env.VITE_CLERK_PROXY_URL ?? null,
-      static_REPLIT_DOMAINS: process.env.REPLIT_DOMAINS ?? null,
       computedFromHeaders: computedProxyUrl,
     },
     requestHeaders: {
