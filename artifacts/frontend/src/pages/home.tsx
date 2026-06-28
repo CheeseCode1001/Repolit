@@ -12,6 +12,7 @@ import {
   FolderOpen,
   Users,
   FileArchive,
+  FolderArchive,
 } from "lucide-react";
 import JSZip from "jszip";
 import {
@@ -279,7 +280,7 @@ export function Home() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadRepo.isPending || folderUploading}
           >
-            <FileArchive className="w-3.5 h-3.5" />
+            <FolderArchive className="w-3.5 h-3.5" />
             {uploadRepo.isPending ? "UPLOADING..." : "UPLOAD ZIP FOLDER"}
           </Button>
         </div>
