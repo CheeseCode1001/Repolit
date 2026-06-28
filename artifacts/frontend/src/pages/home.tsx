@@ -11,7 +11,9 @@ import {
   Upload,
   FolderOpen,
   Users,
+  FileArchive,
 } from "lucide-react";
+import JSZip from "jszip";
 import {
   useListRepos,
   useGetStats,
@@ -44,7 +46,9 @@ export function Home() {
   const [repoPickerOpen, setRepoPickerOpen] = useState(false);
   const { isSignedIn, isLoaded } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const [folderUploading, setFolderUploading] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useGetStats();
   const { data: repos, isLoading: reposLoading } = useListRepos({
@@ -138,6 +142,42 @@ export function Home() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setFolderUploading(true);
+    try {
+      // Zip all folder files client-side
+      const zip = new JSZip();
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const relativePath = file.webkitRelativePath || file.name;
+        zip.file(relativePath, file);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+
+      // Derive a name from the folder path
+      const folderName = files[0].webkitRelativePath?.split("/")[0] || "uploaded-folder";
+      const zipFile = new File([blob], `${folderName}.zip`, { type: "application/zip" });
+
+      const formData = new FormData();
+      formData.append("file", zipFile);
+      const repo = await uploadRepo.mutateAsync({ data: formData as any });
+      setLocation(`/repo/${repo.id}`);
+    } catch (err: any) {
+      const msg = err?.data?.error ?? err.message ?? "Failed to upload folder.";
+      toast({
+        title: "Folder upload failed",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setFolderUploading(false);
+      if (folderInputRef.current) folderInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="container max-w-screen-xl py-8 sm:py-12 flex flex-col gap-10 sm:gap-14">
       {/* Hero */}
@@ -206,6 +246,15 @@ export function Home() {
 
         {/* Alternative input options */}
         <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-xl">
+          {/* Hidden folder picker input */}
+          <input
+            ref={folderInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFolderUpload}
+            {...({ webkitdirectory: "", directory: "", mozdirectory: "" } as any)}
+          />
+          {/* Hidden zip file input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -217,21 +266,21 @@ export function Home() {
             variant="outline"
             size="sm"
             className="font-mono text-xs rounded-none border-border/50 text-muted-foreground hover:text-foreground gap-1.5"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadRepo.isPending}
+            onClick={() => folderInputRef.current?.click()}
+            disabled={uploadRepo.isPending || folderUploading}
           >
-            <Upload className="w-3.5 h-3.5" />
-            {uploadRepo.isPending ? "UPLOADING..." : "UPLOAD FOLDER"}
+            <FolderOpen className="w-3.5 h-3.5" />
+            {folderUploading ? "ZIPPING & UPLOADING..." : "UPLOAD FOLDER"}
           </Button>
           <Button
             variant="outline"
             size="sm"
             className="font-mono text-xs rounded-none border-border/50 text-muted-foreground hover:text-foreground gap-1.5"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploadRepo.isPending}
+            disabled={uploadRepo.isPending || folderUploading}
           >
-            <FolderOpen className="w-3.5 h-3.5" />
-            OPEN ZIP FOLDER
+            <FileArchive className="w-3.5 h-3.5" />
+            {uploadRepo.isPending ? "UPLOADING..." : "UPLOAD ZIP FOLDER"}
           </Button>
         </div>
 

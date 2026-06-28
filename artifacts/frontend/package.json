@@ -79,6 +79,7 @@
     "@clerk/themes": "^2.4.57",
     "@xyflow/react": "^12.11.0",
     "boring-avatars": "^2.0.4",
+    "jszip": "^3.10.1",
     "react-nice-avatar": "^1.5.0"
   }
 }

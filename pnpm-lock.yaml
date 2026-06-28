@@ -187,6 +187,9 @@ importers:
       boring-avatars:
         specifier: ^2.0.4
         version: 2.0.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.1
       react-nice-avatar:
         specifier: ^1.5.0
         version: 1.5.0(react@19.1.0)
