@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Show, useUser, useClerk } from "@clerk/react";
+import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "next-themes";
 import { Sun, Moon, User, Github, Coffee } from "lucide-react";
 import {
@@ -32,15 +32,14 @@ function ThemeToggle() {
 }
 
 function ProfileButton() {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
 
   const { data: profile } = useGetProfile({
     query: { enabled: !!user, queryKey: getGetProfileQueryKey() },
   });
 
-  // avatarConfig is now the seed string for boring-avatars
-  const seed = profile?.avatarConfig ?? user?.id ?? "default";
+  const seed = profile?.avatarConfig ?? user?.userId ?? "default";
 
   return (
     <button
@@ -59,21 +58,22 @@ function ProfileButton() {
 }
 
 function UserNav() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
 
   return (
     <div className="flex items-center gap-2">
       <ProfileButton />
       <span className="text-xs font-mono text-muted-foreground hidden sm:inline truncate max-w-[120px]">
-        {user?.primaryEmailAddress?.emailAddress ?? user?.username ?? ""}
+        {user?.username ?? ""}
       </span>
       <Button
         variant="outline"
         size="sm"
         className="font-mono text-[10px] uppercase tracking-wider h-7 px-2 border-border/60"
-        onClick={() => signOut(() => setLocation("/"))}
+        onClick={() => {
+          logout().then(() => setLocation("/"));
+        }}
       >
         Sign Out
       </Button>
@@ -83,6 +83,7 @@ function UserNav() {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
+  const { isSignedIn } = useAuth();
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans">
@@ -127,26 +128,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Button>
             </a>
             <ThemeToggle />
-            <Show when="signed-out">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="font-mono text-[10px] uppercase tracking-wider px-2 sm:px-3 text-muted-foreground hover:text-foreground"
-                onClick={() => setLocation("/sign-up")}
-              >
-                Sign Up
-              </Button>
-              <Button
-                size="sm"
-                className="font-mono text-[10px] uppercase tracking-wider px-2 sm:px-3"
-                onClick={() => setLocation("/sign-in")}
-              >
-                Sign In
-              </Button>
-            </Show>
-            <Show when="signed-in">
-              <UserNav />
-            </Show>
+            {!isSignedIn && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="font-mono text-[10px] uppercase tracking-wider px-2 sm:px-3 text-muted-foreground hover:text-foreground"
+                  onClick={() => setLocation("/sign-up")}
+                >
+                  Sign Up
+                </Button>
+                <Button
+                  size="sm"
+                  className="font-mono text-[10px] uppercase tracking-wider px-2 sm:px-3"
+                  onClick={() => setLocation("/sign-in")}
+                >
+                  Sign In
+                </Button>
+              </>
+            )}
+            {isSignedIn && <UserNav />}
           </nav>
         </div>
       </header>

@@ -3,8 +3,12 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const userProfilesTable = pgTable("user_profiles", {
-  userId: text("user_id").primaryKey(),
+  userId: text("user_id").primaryKey(), // Generated UUID
   isAnon: boolean("is_anon").notNull().default(false),
+  email: text("email").unique(),
+  passwordHash: text("password_hash"),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  verificationCode: text("verification_code"),
   displayName: text("display_name"),
   username: text("username"),
   bio: text("bio"),

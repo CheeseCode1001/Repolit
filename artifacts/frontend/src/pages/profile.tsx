@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { useUser, useClerk } from "@clerk/react";
+import { useAuth } from "@/lib/auth-context";
 import {
   useGetProfile,
   useUpdateProfile,
@@ -9,6 +9,7 @@ import {
   useGetGitHubRepos,
   getGetProfileQueryKey,
   getGetGitHubReposQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,10 +17,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Star, Github, Save, User, Search, ExternalLink,
-  Lock, Unlock, RefreshCw, X, Link2
+  Lock, Unlock, RefreshCw, X, Link2, Trash2
 } from "lucide-react";
 import Avatar from "boring-avatars";
 import { useQueryClient } from "@tanstack/react-query";
@@ -238,7 +248,23 @@ function GitHubConnectSection({ githubUsername }: { githubUsername: string | nul
   const handleConnect = async () => {
     try {
       const res = await startOAuth.mutateAsync();
-      window.location.href = res.url;
+      const popup = window.open(res.url, '_blank', 'width=600,height=600');
+      
+      const listener = (event: MessageEvent) => {
+        if (event.data === "github_connected") {
+          toast({ title: "GitHub connected", description: "Successfully connected your GitHub account" });
+          window.location.reload();
+        } else if (event.data === "github_error") {
+          toast({ title: "GitHub connection failed", description: "An error occurred during authentication", variant: "destructive" });
+        }
+        
+        if (event.data === "github_connected" || event.data === "github_error") {
+          window.removeEventListener("message", listener);
+        }
+      };
+      
+      window.addEventListener("message", listener);
+      
     } catch (err: any) {
       const msg = err?.data?.error ?? "Failed to start GitHub connection";
       toast({ title: "GitHub connection failed", description: msg, variant: "destructive" });
@@ -272,7 +298,7 @@ function GitHubConnectSection({ githubUsername }: { githubUsername: string | nul
 
 export function ProfilePage() {
   const [, setLocation] = useLocation();
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -282,11 +308,12 @@ export function ProfilePage() {
 
   const updateProfile = useUpdateProfile();
 
-  const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [selectedSeed, setSelectedSeed] = useState<string>("");
   const [visibleSeeds, setVisibleSeeds] = useState<string[]>(AVATAR_SEEDS.slice(0, 6));
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Handle GitHub OAuth callback
   useEffect(() => {
@@ -303,28 +330,26 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (profile) {
-      setDisplayName(profile.displayName ?? user?.fullName ?? "");
       setUsername(profile.username ?? user?.username ?? "");
       setBio(profile.bio ?? "");
-      setSelectedSeed(profile.avatarConfig ?? user?.id ?? "default");
+      setSelectedSeed(profile.avatarConfig ?? user?.userId ?? "default");
     }
   }, [profile, user]);
 
   const shuffleSeeds = useCallback(() => {
     const extra = [
-      `${displayName || "user"}-1`, `${displayName || "user"}-2`,
+      `${username || "user"}-1`, `${username || "user"}-2`,
       `${username || "member"}-alpha`, `${username || "member"}-beta`,
       "dark-matter", "void-stream", "neon-circuit", "byte-forge",
     ];
     const pool = [...AVATAR_SEEDS, ...extra];
     setVisibleSeeds(pool.sort(() => Math.random() - 0.5).slice(0, 6));
-  }, [displayName, username]);
+  }, [username]);
 
   const handleSave = async () => {
     try {
       await updateProfile.mutateAsync({
         data: {
-          displayName: displayName || undefined,
           username: username || undefined,
           bio: bio || undefined,
           avatarConfig: selectedSeed || undefined,
@@ -334,6 +359,22 @@ export function ProfilePage() {
     } catch (err: any) {
       const msg = err?.data?.error ?? err.message ?? "Unknown error";
       toast({ title: "Failed to save profile", description: msg, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await customFetch("/api/profile", { method: "DELETE" });
+      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
+      setShowDeleteModal(false);
+      // Force full reload to clear all state
+      window.location.href = "/";
+    } catch (err: any) {
+      const msg = err?.data?.error ?? err.message ?? "Failed to delete account";
+      toast({ title: "Deletion failed", description: msg, variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -355,7 +396,7 @@ export function ProfilePage() {
   }
 
   const points = profile?.points ?? 0;
-  const currentSeed = selectedSeed || user.id;
+  const currentSeed = selectedSeed || user.userId || "default";
 
   return (
     <div className="container max-w-screen-xl py-6 sm:py-8 space-y-6">
@@ -367,13 +408,24 @@ export function ProfilePage() {
         <ArrowLeft className="w-3 h-3 mr-1" /> BACK TO HOME
       </Button>
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold font-mono tracking-tight">YOUR PROFILE</h1>
-        {profile && (
-          <Badge variant="outline" className="font-mono text-xs w-fit flex items-center gap-1.5 border-primary/30 text-primary bg-primary/5">
-            <Star className="w-3 h-3" /> {points} pts
-          </Badge>
-        )}
+      <div className="flex flex-col sm:flex-row md:justify-between justify-center sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold font-mono tracking-tight">YOUR PROFILE</h1>
+          {profile && (
+            <Badge variant="outline" className="font-mono text-xs w-fit flex items-center gap-1.5 border-primary/30 text-primary bg-primary/5">
+              <Star className="w-3 h-3" /> {points} pts
+            </Badge>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-mono text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive w-fit"
+          onClick={() => setShowDeleteModal(true)}
+        >
+          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+          DELETE ACCOUNT
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -431,16 +483,7 @@ export function ProfilePage() {
               </div>
             ) : (
               <>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Display Name</label>
-                  <Input
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder={user.fullName ?? "Your name"}
-                    className="font-mono text-sm"
-                    maxLength={64}
-                  />
-                </div>
+
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Username</label>
@@ -468,7 +511,7 @@ export function ProfilePage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Email</label>
                   <Input
-                    value={user.primaryEmailAddress?.emailAddress ?? ""}
+                    value={user.email ?? ""}
                     disabled
                     className="font-mono text-sm bg-muted/50 text-muted-foreground"
                   />
@@ -536,6 +579,35 @@ export function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Account Modal */}
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-start justify-start flex-col gap-3 mb-1">
+              <img src="/logo-icon.png" alt="Logo" className="w-12 h-12" />
+              <AlertDialogTitle className="font-mono text-lg">Delete Account</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="border border-primary p-5 bg-primary/2 mt-2 font-mono text-sm">
+              This action is <span className="text-destructive font-semibold">permanent</span> and cannot be undone. All your data, repositories, and points will be lost forever.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel className="font-mono text-xs" disabled={deleting}>
+              CANCEL
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              className="font-mono text-xs font-bold tracking-wider"
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              {deleting ? "DELETING..." : "YES, DELETE MY ACCOUNT"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

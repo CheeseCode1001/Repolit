@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireClerkAuth } from "../middlewares/resolveUser";
+import { requireAuth } from "../middlewares/resolveUser";
 import { db } from "@workspace/db";
 import { userProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -29,7 +29,7 @@ function pruneStates() {
 }
 
 router.post("/github/oauth/start", (req, res) => {
-  const userId = requireClerkAuth(req, res);
+  const userId = requireAuth(req, res);
   if (!userId) return;
   if (!GITHUB_CLIENT_ID) {
     res.status(503).json({ error: "GitHub OAuth is not configured. Set GITHUB_OAUTH_CLIENT_ID." });
@@ -105,15 +105,44 @@ router.get("/github/oauth/callback", async (req, res) => {
       })
       .where(eq(userProfilesTable.userId, userId));
 
-    res.redirect(`${BASE_URL}/profile?github=connected`);
+    // Respond with HTML to close tab and notify opener
+    const html = `
+      <html>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage("github_connected", "*");
+              window.close();
+            } else {
+              window.location.href = "${BASE_URL}/profile?github=connected";
+            }
+          </script>
+        </body>
+      </html>
+    `;
+    res.send(html);
   } catch (err) {
     logger.error({ err }, "GitHub OAuth callback error");
-    res.redirect(`${BASE_URL}/profile?github_error=server`);
+    const html = `
+      <html>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage("github_error", "*");
+              window.close();
+            } else {
+              window.location.href = "${BASE_URL}/profile?github_error=server";
+            }
+          </script>
+        </body>
+      </html>
+    `;
+    res.send(html);
   }
 });
 
 router.get("/github/repos", async (req, res) => {
-  const userId = requireClerkAuth(req, res);
+  const userId = requireAuth(req, res);
   if (!userId) return;
   const q = (req.query.q as string | undefined) ?? "";
   const page = parseInt((req.query.page as string | undefined) ?? "1", 10);
@@ -196,7 +225,7 @@ router.get("/github/repos", async (req, res) => {
 });
 
 router.delete("/github/disconnect", async (req, res) => {
-  const userId = requireClerkAuth(req, res);
+  const userId = requireAuth(req, res);
   if (!userId) return;
   await db
     .update(userProfilesTable)

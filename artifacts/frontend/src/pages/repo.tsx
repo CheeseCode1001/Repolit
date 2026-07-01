@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/lib/auth-context";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -91,7 +91,7 @@ export function RepoDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { getToken } = useAuth();
+  useAuth();
 
   const [logs, setLogs] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -166,16 +166,9 @@ export function RepoDashboard() {
     );
 
     try {
-      let token = await getToken();
-      if (!token) {
-        await new Promise((r) => setTimeout(r, 400));
-        token = await getToken();
-      }
-
       const response = await fetch(`/api/repos/${id}/analyze`, {
         method: "POST",
         credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error("Failed to start analysis");
       if (!response.body) throw new Error("No response body");
@@ -453,10 +446,13 @@ export function RepoDashboard() {
               </AlertDialogTrigger>
               <AlertDialogContent className="border-border mx-4 sm:mx-0 max-w-md">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="font-mono text-base">
-                    Delete Repository Data?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="font-mono text-xs">
+                  <div className="flex items-start justify-start flex-col gap-3 mb-1">
+                    <img src="/logo-icon.png" alt="Logo" className="w-12 h-12" />
+                    <AlertDialogTitle className="font-mono text-base">
+                      Delete Repository Data?
+                    </AlertDialogTitle>
+                  </div>
+                  <AlertDialogDescription className="border border-primary p-5 bg-primary/2 mt-2 font-mono text-sm">
                     This will permanently remove the analysis data for{" "}
                     {repo.owner}/{repo.name}. This cannot be undone.
                   </AlertDialogDescription>

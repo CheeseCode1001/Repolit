@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { userProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireClerkAuth, ensureUserProfile } from "../middlewares/resolveUser";
+import { requireAuth } from "../middlewares/resolveUser";
 
 const router = Router();
 
@@ -16,11 +16,10 @@ const UpdateProfileBody = z.object({
 
 // GET /api/profile — get current user profile (auth users only)
 router.get("/profile", async (req, res) => {
-  const userId = requireClerkAuth(req, res);
+  const userId = requireAuth(req, res);
   if (!userId) return;
 
   try {
-    await ensureUserProfile(userId);
     const [profile] = await db
       .select()
       .from(userProfilesTable)
@@ -36,7 +35,7 @@ router.get("/profile", async (req, res) => {
 
 // PUT /api/profile — update current user profile
 router.put("/profile", async (req, res) => {
-  const userId = requireClerkAuth(req, res);
+  const userId = requireAuth(req, res);
   if (!userId) return;
 
   const parsed = UpdateProfileBody.safeParse(req.body);
@@ -46,8 +45,6 @@ router.put("/profile", async (req, res) => {
   }
 
   try {
-    await ensureUserProfile(userId);
-
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (parsed.data.displayName !== undefined) updateData.displayName = parsed.data.displayName;
     if (parsed.data.username !== undefined) updateData.username = parsed.data.username;
@@ -63,6 +60,24 @@ router.put("/profile", async (req, res) => {
     res.json(updated);
   } catch (err) {
     req.log.error({ err }, "Failed to update profile");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/profile — delete the user's account
+router.delete("/profile", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  try {
+    await db
+      .delete(userProfilesTable)
+      .where(eq(userProfilesTable.userId, userId));
+
+    res.clearCookie("token");
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete account");
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -3,7 +3,6 @@ import { db } from "@workspace/db";
 import { reposTable, analysesTable, userProfilesTable } from "@workspace/db";
 import { eq, desc, count, sql, and } from "drizzle-orm";
 import { ai } from "@workspace/integrations-gemini-ai";
-import { getAuth } from "@clerk/express";
 import { z } from "zod";
 import multer from "multer";
 import {

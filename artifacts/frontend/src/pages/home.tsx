@@ -24,7 +24,7 @@ import {
   getListReposQueryKey,
   getGetProfileQueryKey,
 } from "@workspace/api-client-react";
-import { useUser } from "@clerk/react";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,7 +45,7 @@ export function Home() {
   const { toast } = useToast();
   const [url, setUrl] = useState("");
   const [repoPickerOpen, setRepoPickerOpen] = useState(false);
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);

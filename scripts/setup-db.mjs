@@ -37,7 +37,11 @@ if (databaseUrl.startsWith("pglite:")) {
 } else {
   const pg = require(path.join(rootDir, "lib/db/node_modules/pg"));
   console.log("Checking PostgreSQL connection...");
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+  const poolOptions = { connectionString: databaseUrl.replace("?sslmode=require", "").replace("&sslmode=require", "") };
+  if (databaseUrl.includes("sslmode=require")) {
+    poolOptions.ssl = { rejectUnauthorized: false };
+  }
+  const pool = new pg.Pool(poolOptions);
 
   try {
     await pool.query("SELECT 1");

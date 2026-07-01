@@ -27,8 +27,6 @@
 # ============================================================================
 minimumReleaseAge: 1440
 
-minimumReleaseAgeExclude:
-
 packages:
   - artifacts/*
   - lib/*
@@ -61,7 +59,6 @@ catalog:
 autoInstallPeers: false
 
 onlyBuiltDependencies:
-  - '@clerk/shared'
   - '@google/genai'
   - '@swc/core'
   - esbuild
@@ -82,7 +79,7 @@ overrides:
   esbuild: "0.27.3"
 
 allowBuilds:
-  '@clerk/shared': true
+  '@clerk/shared': false
   '@google/genai': true
   esbuild: true
   protobufjs: true

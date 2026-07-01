@@ -28,7 +28,7 @@ const isPglite = databaseUrl.startsWith("pglite:");
 export const pool = isPglite
   ? null
   : new pg.Pool({
-      connectionString: databaseUrl,
+      connectionString: databaseUrl.replace("?sslmode=require", "").replace("&sslmode=require", ""),
       ssl: databaseUrl.includes("sslmode=require")
         ? { rejectUnauthorized: false }
         : undefined,

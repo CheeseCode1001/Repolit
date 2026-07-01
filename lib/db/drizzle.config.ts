@@ -29,7 +29,8 @@ export default defineConfig({
       }
     : {
         dbCredentials: {
-          url: databaseUrl,
+          url: databaseUrl.replace("?sslmode=require", "").replace("&sslmode=require", ""),
+          ...(databaseUrl.includes("sslmode=require") ? { ssl: { rejectUnauthorized: false } } : {})
         },
       }),
 });
