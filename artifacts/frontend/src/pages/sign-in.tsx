@@ -36,7 +36,7 @@ export function SignInPage() {
 
   return (
     <div className="flex items-center justify-center bg-background px-4 py-12 md:scale-80 scale-90">
-      <Card className="w-full max-w-md border-border/60 bg-[hsl(240,5.9%,7%)]">
+      <Card className="w-full max-w-md border-border/60">
         <CardHeader className="space-y-1 pb-6 text-center">
           <img src="/logo-icon.png" alt="Logo" className="w-14 h-14 mx-auto mb-4" />
           <CardTitle className="text-2xl font-bold font-mono tracking-tight text-[hsl(0,0%,98%)]">Welcome back</CardTitle>
