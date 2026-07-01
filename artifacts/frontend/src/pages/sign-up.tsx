@@ -21,12 +21,12 @@ const getPasswordStrength = (password: string) => {
 
 const getStrengthColor = (strength: number) => {
   switch (strength) {
-    case 0: return "bg-[hsl(240,3.7%,20%)]"; // default
+    case 0: return "bg-muted"; // default
     case 1: return "bg-red-500";
     case 2: return "bg-yellow-500";
     case 3: return "bg-blue-500";
-    case 4: return "bg-[#760BF7]";
-    default: return "bg-[hsl(240,3.7%,20%)]";
+    case 4: return "bg-primary";
+    default: return "bg-muted";
   }
 };
 
@@ -114,23 +114,23 @@ export function SignUpPage() {
   };
 
   return (
-    <div className="flex items-center justify-center bg-background px-4 py-12 md:scale-80 scale-90">
-      <Card className="w-full max-w-md border-border/60">
+    <div className="flex items-center justify-center bg-background px-4 py-12">
+      <Card className="w-full max-w-md border-border/60 md:scale-80 scale-90">
         <CardHeader className="space-y-1 pb-6 text-center">
         {/* logo */}
         <img src="/logo-icon.png" alt="Logo" className="w-14 h-14 mx-auto mb-4" />
-          <CardTitle className="text-2xl font-bold font-mono tracking-tight text-[hsl(0,0%,98%)]">Create account</CardTitle>
+          <CardTitle className="text-2xl font-bold font-mono tracking-tight">Create account</CardTitle>
           <p className="text-sm text-muted-foreground font-mono">Start analyzing repositories today</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-2 relative">
-              <label className="text-xs font-mono text-[hsl(0,0%,98%)] uppercase tracking-wider">Username</label>
+              <label className="text-xs font-mono uppercase tracking-wider">Username</label>
               <Input
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().trim())}
-                className={`bg-[hsl(240,3.7%,12%)] border-[hsl(240,3.7%,20%)] text-[hsl(0,0%,98%)] font-mono ${
+                className={`font-mono ${
                   usernameAvailable === false || usernameError ? "border-red-500" : 
                   usernameAvailable === true ? "border-green-500" : ""
                 }`}
@@ -148,19 +148,19 @@ export function SignUpPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-xs font-mono text-[hsl(0,0%,98%)] uppercase tracking-wider">Email</label>
+              <label className="text-xs font-mono uppercase tracking-wider">Email</label>
               <Input
                 required
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value.trim())}
-                className="bg-[hsl(240,3.7%,12%)] border-[hsl(240,3.7%,20%)] text-[hsl(0,0%,98%)] font-mono"
+                className="font-mono"
                 placeholder="you@example.com"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-mono text-[hsl(0,0%,98%)] uppercase tracking-wider flex justify-between">
+              <label className="text-xs font-mono uppercase tracking-wider flex justify-between">
                 <span>Password</span>
                 {password && <span className="text-muted-foreground capitalize">{getStrengthLabel(strength)}</span>}
               </label>
@@ -169,7 +169,7 @@ export function SignUpPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-[hsl(240,3.7%,12%)] border-[hsl(240,3.7%,20%)] text-[hsl(0,0%,98%)] font-mono"
+                className="font-mono"
               />
               {/* Password strength meter */}
               <div className="flex gap-1 h-1.5 mt-2">
@@ -179,7 +179,7 @@ export function SignUpPage() {
                     className={`h-full flex-1 rounded-sm transition-colors duration-300 ${
                       password.length > 0 && strength >= level 
                         ? getStrengthColor(strength)
-                        : "bg-[hsl(240,3.7%,15%)]"
+                        : "bg-muted"
                     }`}
                   />
                 ))}
@@ -189,14 +189,14 @@ export function SignUpPage() {
             <Button
               type="submit"
               disabled={loading || usernameAvailable === false || !!usernameError || strength < 2}
-              className="w-full bg-[#760BF7] text-white font-mono font-bold uppercase tracking-wider hover:bg-[#8b1cff] mt-6"
+              className="w-full bg-primary text-primary-foreground font-mono font-bold uppercase tracking-wider hover:bg-primary/90 mt-6"
             >
               {loading ? "Creating..." : "Continue"}
             </Button>
             
-            <div className="mt-4 text-center text-sm font-mono text-[hsl(240,5%,64.9%)]">
+            <div className="mt-4 text-center text-sm font-mono text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/sign-in" className="text-[#760BF7] hover:underline">
+              <Link href="/sign-in" className="text-primary hover:underline">
                 Sign in
               </Link>
             </div>

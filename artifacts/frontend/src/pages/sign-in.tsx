@@ -35,47 +35,47 @@ export function SignInPage() {
   };
 
   return (
-    <div className="flex items-center justify-center bg-background px-4 py-12 md:scale-80 scale-90">
-      <Card className="w-full max-w-md border-border/60">
+    <div className="flex items-center justify-center bg-background px-4 py-12">
+      <Card className="w-full max-w-md border-border/60 md:scale-80 scale-90">
         <CardHeader className="space-y-1 pb-6 text-center">
           <img src="/logo-icon.png" alt="Logo" className="w-14 h-14 mx-auto mb-4" />
-          <CardTitle className="text-2xl font-bold font-mono tracking-tight text-[hsl(0,0%,98%)]">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold font-mono tracking-tight ">Welcome back</CardTitle>
           <p className="text-sm text-muted-foreground font-mono">Sign in to your Repolit account</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-2">
-              <label className="text-xs font-mono text-[hsl(0,0%,98%)] uppercase tracking-wider">Username or Email</label>
+              <label className="text-xs font-mono uppercase tracking-wider">Username or Email</label>
               <Input
                 required
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                className="bg-[hsl(240,3.7%,12%)] border-[hsl(240,3.7%,20%)] text-[hsl(0,0%,98%)] font-mono"
+                className="font-mono"
                 placeholder="your_username or email@example.com"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-mono text-[hsl(0,0%,98%)] uppercase tracking-wider">Password</label>
+              <label className="text-xs font-mono uppercase tracking-wider">Password</label>
               <Input
                 required
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-[hsl(240,3.7%,12%)] border-[hsl(240,3.7%,20%)] text-[hsl(0,0%,98%)] font-mono"
+                className="font-mono"
               />
             </div>
             
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#760BF7] text-white font-mono font-bold uppercase tracking-wider hover:bg-[#8b1cff] mt-4"
+              className="w-full bg-primary text-primary-foreground font-mono font-bold uppercase tracking-wider hover:bg-primary/90 mt-4"
             >
               {loading ? "Signing in..." : "Continue"}
             </Button>
             
-            <div className="mt-4 text-center text-sm font-mono text-[hsl(240,5%,64.9%)]">
+            <div className="mt-4 text-center text-sm font-mono text-muted-foreground">
               Don't have an account?{" "}
-              <Link href="/sign-up" className="text-[#760BF7] hover:underline">
+              <Link href="/sign-up" className="text-primary hover:underline">
                 Sign up
               </Link>
             </div>
