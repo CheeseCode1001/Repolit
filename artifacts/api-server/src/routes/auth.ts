@@ -76,13 +76,13 @@ router.post("/auth/signup", async (req, res) => {
     username,
     email,
     passwordHash,
-    verificationCode,
-    emailVerified: false,
+    verificationCode: null,
+    emailVerified: true,
     displayName: username,
   });
 
-  // Send verification email
-  await sendVerificationEmail(email, verificationCode, username);
+  // Send welcome email
+  await sendWelcomeEmail(email, username);
 
   const token = generateToken({ userId });
   res.cookie("token", token, {
@@ -93,7 +93,7 @@ router.post("/auth/signup", async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
-  res.json({ userId, username, email, emailVerified: false });
+  res.json({ userId, username, email, emailVerified: true });
 });
 
 // POST /api/auth/verify-email
@@ -169,7 +169,7 @@ router.post("/auth/login", async (req, res) => {
   });
 
   // Send welcome back email asynchronously
-  if (user.email && user.emailVerified) {
+  if (user.email) {
     sendWelcomeBackEmail(user.email, user.username!).catch(err => {
       req.log.error({ err }, "Failed to send welcome back email");
     });

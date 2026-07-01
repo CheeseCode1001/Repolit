@@ -22,7 +22,7 @@ export function SignInPage() {
     try {
       await login({ login: loginId, password });
       toast({ title: "Welcome back!", description: "You have successfully signed in." });
-      setLocation("/");
+      window.location.href = "/";
     } catch (err: any) {
       toast({ 
         title: "Sign in failed", 

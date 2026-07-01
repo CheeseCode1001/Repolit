@@ -100,8 +100,8 @@ export function SignUpPage() {
     
     try {
       await signup({ username, email, password });
-      toast({ title: "Account created", description: "Please check your email to verify your account." });
-      setLocation("/verify-email");
+      toast({ title: "Account created", description: "Welcome to Repolit!" });
+      window.location.href = "/";
     } catch (err: any) {
       toast({ 
         title: "Sign up failed", 
@@ -129,7 +129,7 @@ export function SignUpPage() {
               <Input
                 required
                 value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().trim())}
+                onChange={(e) => setUsername(e.target.value.trim())}
                 className={`font-mono ${
                   usernameAvailable === false || usernameError ? "border-red-500" : 
                   usernameAvailable === true ? "border-green-500" : ""

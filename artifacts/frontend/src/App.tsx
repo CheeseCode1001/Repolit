@@ -16,7 +16,7 @@ import { getAnonId } from "@/lib/anon-session";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SignInPage } from "@/pages/sign-in";
 import { SignUpPage } from "@/pages/sign-up";
-import { VerifyEmailPage } from "@/pages/verify-email";
+
 
 const queryClient = new QueryClient();
 
@@ -68,7 +68,7 @@ function Router() {
         <Route path="/shared/:token" component={SharedAnalysisPage} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
-        <Route path="/verify-email" component={VerifyEmailPage} />
+
         <Route component={NotFound} />
       </Switch>
     </Layout>
