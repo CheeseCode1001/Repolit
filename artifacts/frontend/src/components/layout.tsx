@@ -143,7 +143,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   className="font-mono text-[10px] uppercase tracking-wider px-2 sm:px-3"
                   onClick={() => setLocation("/sign-in")}
                 >
-                  Sign In
+                  Login
                 </Button>
               </>
             )}

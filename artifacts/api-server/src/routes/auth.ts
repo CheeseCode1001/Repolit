@@ -81,14 +81,13 @@ router.post("/auth/signup", async (req, res) => {
     displayName: username,
   });
 
-  // Send welcome email
-  await sendWelcomeEmail(email, username);
+
 
   const token = generateToken({ userId });
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
@@ -163,17 +162,12 @@ router.post("/auth/login", async (req, res) => {
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
-  // Send welcome back email asynchronously
-  if (user.email) {
-    sendWelcomeBackEmail(user.email, user.username!).catch(err => {
-      req.log.error({ err }, "Failed to send welcome back email");
-    });
-  }
+
 
   res.json({ userId: user.userId, username: user.username, email: user.email, emailVerified: user.emailVerified });
 });
