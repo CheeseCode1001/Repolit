@@ -166,7 +166,8 @@ export function RepoDashboard() {
     );
 
     try {
-      const response = await fetch(`/api/repos/${id}/analyze`, {
+      const baseUrl = import.meta.env.VITE_API_URL || "";
+      const response = await fetch(`${baseUrl}/api/repos/${id}/analyze`, {
         method: "POST",
         credentials: "include",
       });

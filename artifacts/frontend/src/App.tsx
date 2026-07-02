@@ -35,7 +35,9 @@ function AuthTokenRegistrar() {
     const originalFetch = window.fetch;
     window.fetch = function(input, init) {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url;
-      if (url.startsWith("/api")) {
+      const isApiRoute = url.startsWith("/api") || (import.meta.env.VITE_API_URL && url.startsWith(import.meta.env.VITE_API_URL));
+      
+      if (isApiRoute) {
         const headers = new Headers((init as RequestInit)?.headers);
         if (!headers.has("x-anon-id")) {
           headers.set("x-anon-id", anonId);
